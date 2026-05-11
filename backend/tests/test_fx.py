@@ -1,6 +1,6 @@
-from unittest.mock import patch, Mock
-from backend.scrapers.fx import get_usd_to_hkd
 import pytest
+import requests
+from backend.scrapers.fx import get_usd_to_hkd
 
 
 def test_get_usd_to_hkd_returns_float(requests_mock):
@@ -15,5 +15,5 @@ def test_get_usd_to_hkd_returns_float(requests_mock):
 
 def test_get_usd_to_hkd_raises_on_http_error(requests_mock):
     requests_mock.get("https://open.er-api.com/v6/latest/USD", status_code=500)
-    with pytest.raises(Exception):
+    with pytest.raises(requests.exceptions.HTTPError):
         get_usd_to_hkd()
