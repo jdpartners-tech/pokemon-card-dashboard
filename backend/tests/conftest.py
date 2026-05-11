@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from backend.database import Base, get_db
 from backend.main import app
 
-TEST_DB_URL = "sqlite:///./test.db"
+TEST_DB_URL = "sqlite:///:memory:"
 
 @pytest.fixture(scope="session")
 def engine():
@@ -28,4 +28,4 @@ def client(db):
         yield db
     app.dependency_overrides[get_db] = override_get_db
     yield TestClient(app)
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_db, None)
