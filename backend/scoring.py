@@ -11,13 +11,20 @@ def _normalize(values: list[float]) -> list[float]:
     return [(v - min_v) / (max_v - min_v) for v in values]
 
 
+def _aware_dt(dt: datetime) -> datetime:
+    """Ensure a datetime is timezone-aware (assume UTC if naive)."""
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
 def calculate_price_trend(snapshots, days: int) -> Optional[float]:
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(days=days)
     prev_cutoff = now - timedelta(days=days * 2)
 
-    recent = [s for s in snapshots if s.scraped_at >= cutoff]
-    prev = [s for s in snapshots if prev_cutoff <= s.scraped_at < cutoff]
+    recent = [s for s in snapshots if _aware_dt(s.scraped_at) >= cutoff]
+    prev = [s for s in snapshots if prev_cutoff <= _aware_dt(s.scraped_at) < cutoff]
 
     def avg_prices(snaps):
         prices = []
