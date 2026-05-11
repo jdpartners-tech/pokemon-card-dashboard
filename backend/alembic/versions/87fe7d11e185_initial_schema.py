@@ -34,7 +34,7 @@ def upgrade() -> None:
     op.create_table(
         'price_snapshots',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('card_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('cards.id'), nullable=False),
+        sa.Column('card_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('cards.id', ondelete='CASCADE'), nullable=False),
         sa.Column('snkrdunk_price_hkd', sa.Numeric(12, 2), nullable=True),
         sa.Column('pricecharting_price_usd', sa.Numeric(12, 2), nullable=True),
         sa.Column('pricecharting_price_hkd', sa.Numeric(12, 2), nullable=True),
@@ -45,7 +45,7 @@ def upgrade() -> None:
     op.create_table(
         'watchlist',
         sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column('card_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('cards.id'), nullable=False, unique=True),
+        sa.Column('card_id', postgresql.UUID(as_uuid=True), sa.ForeignKey('cards.id', ondelete='CASCADE'), nullable=False, unique=True),
         sa.Column('added_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
 

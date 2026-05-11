@@ -1,5 +1,4 @@
 import uuid
-from decimal import Decimal
 from sqlalchemy import Column, String, Numeric, DateTime, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -17,15 +16,15 @@ class Card(Base):
     pricecharting_id = Column(String, unique=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    snapshots = relationship("PriceSnapshot", back_populates="card", order_by="PriceSnapshot.scraped_at")
-    watchlist_entry = relationship("WatchlistItem", back_populates="card", uselist=False)
+    snapshots = relationship("PriceSnapshot", back_populates="card", order_by="PriceSnapshot.scraped_at", cascade="all, delete-orphan", passive_deletes=True)
+    watchlist_entry = relationship("WatchlistItem", back_populates="card", uselist=False, cascade="all, delete-orphan", passive_deletes=True)
 
 
 class PriceSnapshot(Base):
     __tablename__ = "price_snapshots"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    card_id = Column(UUID(as_uuid=True), ForeignKey("cards.id"), nullable=False)
+    card_id = Column(UUID(as_uuid=True), ForeignKey("cards.id", ondelete="CASCADE"), nullable=False)
     snkrdunk_price_hkd = Column(Numeric(12, 2))
     pricecharting_price_usd = Column(Numeric(12, 2))
     pricecharting_price_hkd = Column(Numeric(12, 2))
@@ -39,7 +38,7 @@ class WatchlistItem(Base):
     __tablename__ = "watchlist"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    card_id = Column(UUID(as_uuid=True), ForeignKey("cards.id"), nullable=False, unique=True)
+    card_id = Column(UUID(as_uuid=True), ForeignKey("cards.id", ondelete="CASCADE"), nullable=False, unique=True)
     added_at = Column(DateTime(timezone=True), server_default=func.now())
 
     card = relationship("Card", back_populates="watchlist_entry")
