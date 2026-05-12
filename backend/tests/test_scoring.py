@@ -25,7 +25,7 @@ def _snap(snkr=None, pc_hkd=None, days_ago=0):
 
 
 def test_trend_rising():
-    snaps = [_snap(snkr=1000, days_ago=14), _snap(snkr=1200, days_ago=3)]
+    snaps = [_snap(snkr=1000, days_ago=13), _snap(snkr=1200, days_ago=3)]
     trend = calculate_price_trend(snaps, days=7)
     assert trend is not None
     assert trend > 0

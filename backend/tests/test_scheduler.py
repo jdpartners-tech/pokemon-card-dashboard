@@ -34,7 +34,8 @@ def test_ingest_pricecharting_creates_snapshot(db):
     with patch("backend.scheduler.scrape_pricecharting", return_value=scraped):
         _ingest_pricecharting(db, fx_rate=7.8)
     db.flush()
-    snaps = db.query(PriceSnapshot).all()
+    card = db.query(Card).filter(Card.pricecharting_id == "pc-venu").first()
+    snaps = db.query(PriceSnapshot).filter(PriceSnapshot.card_id == card.id).all()
     assert len(snaps) == 1
     assert snaps[0].pricecharting_price_usd == Decimal("500.0")
     assert snaps[0].pricecharting_price_hkd == Decimal("3900.0")
