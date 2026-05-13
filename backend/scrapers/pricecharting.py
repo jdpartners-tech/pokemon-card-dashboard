@@ -1,7 +1,6 @@
-import requests
 import logging
-from bs4 import BeautifulSoup
 from dataclasses import dataclass
+from playwright.sync_api import sync_playwright
 
 logger = logging.getLogger(__name__)
 
@@ -19,58 +18,65 @@ class ScrapedCard:
 
 
 def scrape_pricecharting(max_pages: int = 10) -> list[ScrapedCard]:
-    """Scrapes PSA 10 Pokemon card prices from pricecharting.com."""
+    """Scrapes PSA 10 Pokemon card prices from pricecharting.com using Playwright."""
     cards = []
-    url = POKEMON_CATEGORY_URL
 
-    for page in range(max_pages):
-        try:
-            resp = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
-            resp.raise_for_status()
-        except Exception as e:
-            logger.error(f"pricecharting page {page} failed: {e}")
-            break
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        url = POKEMON_CATEGORY_URL
 
-        soup = BeautifulSoup(resp.text, "html.parser")
-        rows = soup.select("table#games_table tbody tr")
-        if not rows:
-            break
-
-        for row in rows:
+        for page_num in range(max_pages):
             try:
-                link_tag = row.select_one("td.title a")
-                price_tag = row.select_one("td.price")
-                if not link_tag or not price_tag:
+                page.goto(url, timeout=30000)
+                page.wait_for_selector("table#games_table tbody tr", timeout=15000)
+            except Exception as e:
+                logger.error(f"pricecharting page {page_num} load failed: {e}")
+                break
+
+            rows = page.query_selector_all("table#games_table tbody tr")
+            if not rows:
+                break
+
+            for row in rows:
+                try:
+                    link_el = row.query_selector("td.title a")
+                    price_el = row.query_selector("td.price")
+                    if not link_el or not price_el:
+                        continue
+
+                    href = link_el.get_attribute("href") or ""
+                    pricecharting_id = href.strip("/").split("/")[-1]
+                    full_name = link_el.inner_text().strip()
+                    name, set_name, card_number = _parse_card_name(full_name)
+                    price_text = price_el.inner_text().strip().replace("$", "").replace(",", "")
+                    price = float(price_text)
+
+                    cards.append(ScrapedCard(
+                        name=name,
+                        set_name=set_name,
+                        card_number=card_number,
+                        pricecharting_id=pricecharting_id,
+                        psa10_price_usd=price,
+                    ))
+                except Exception as e:
+                    logger.warning(f"pricecharting row parse failed: {e}")
                     continue
 
-                href = link_tag["href"]
-                pricecharting_id = href.strip("/").split("/")[-1]
-                full_name = link_tag.get_text(strip=True)
-                name, set_name, card_number = _parse_card_name(full_name)
-                price_text = price_tag.get_text(strip=True).replace("$", "").replace(",", "")
-                price = float(price_text)
+            next_el = page.query_selector("a.next-page")
+            if not next_el:
+                break
+            next_href = next_el.get_attribute("href")
+            if not next_href:
+                break
+            url = BASE_URL + next_href
 
-                cards.append(ScrapedCard(
-                    name=name,
-                    set_name=set_name,
-                    card_number=card_number,
-                    pricecharting_id=pricecharting_id,
-                    psa10_price_usd=price,
-                ))
-            except Exception as e:
-                logger.warning(f"pricecharting row parse failed: {e}")
-                continue
-
-        next_link = soup.select_one("a.next-page")
-        if not next_link:
-            break
-        url = BASE_URL + next_link["href"]
+        browser.close()
 
     return cards
 
 
 def _parse_card_name(full_name: str) -> tuple[str, str, str]:
-    """Best-effort parse of 'Charizard Holo [Base Set] #4' into (name, set, number)."""
     import re
     set_match = re.search(r"\[(.+?)\]", full_name)
     set_name = set_match.group(1) if set_match else "Unknown"
