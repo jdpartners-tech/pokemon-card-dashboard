@@ -2,6 +2,7 @@ services:
   - type: web
     name: pokemon-dashboard-api
     runtime: python
+    pythonVersion: "3.11.9"
     rootDir: .
     buildCommand: pip install -r backend/requirements-api.txt
     startCommand: alembic -c backend/alembic.ini upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port $PORT
