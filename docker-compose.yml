@@ -31,6 +31,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        API_URL: http://backend:8000
     restart: unless-stopped
     environment:
       API_URL: http://backend:8000
