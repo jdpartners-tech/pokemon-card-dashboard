@@ -5,8 +5,9 @@ export interface CardSummary {
   card_number: string | null;
   snkrdunk_price_hkd: number | null;
   pricecharting_price_hkd: number | null;
-  trend_7d: number;
-  trend_30d: number;
+  trend_7d: number | null;
+  trend_30d: number | null;
+  trend_90d: number | null;
   arb_gap: number;
   score: number;
   in_watchlist: boolean;
