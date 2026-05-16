@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone, timedelta
 from typing import Optional
 from backend.database import get_db
 from backend.models import Card, PriceSnapshot, WatchlistItem
@@ -8,17 +7,6 @@ from backend.schemas import CardSummary, CardDetail, SnapshotPoint
 from backend.scoring import score_cards
 
 router = APIRouter(prefix="/cards", tags=["cards"])
-
-
-def _snap_in_window(snap, cutoff_utc: datetime) -> bool:
-    """Compare snapshot datetime to cutoff, handling naive datetimes from SQLite."""
-    ts = snap.scraped_at
-    if ts is None:
-        return False
-    if ts.tzinfo is None:
-        # SQLite returns naive datetimes; compare against naive cutoff
-        return ts >= cutoff_utc.replace(tzinfo=None)
-    return ts >= cutoff_utc
 
 
 def _build_summary(scored: dict, watchlist_ids: set) -> CardSummary:
@@ -32,8 +20,9 @@ def _build_summary(scored: dict, watchlist_ids: set) -> CardSummary:
         card_number=card.card_number,
         snkrdunk_price_hkd=float(latest.snkrdunk_price_hkd) if latest and latest.snkrdunk_price_hkd else None,
         pricecharting_price_hkd=float(latest.pricecharting_price_hkd) if latest and latest.pricecharting_price_hkd else None,
-        trend_7d=scored["trend_7d"],
-        trend_30d=scored["trend_30d"],
+        trend_7d=scored["trend_7d"] or None,
+        trend_30d=scored["trend_30d"] or None,
+        trend_90d=scored["trend_90d"] or None,
         arb_gap=scored["arb_gap"],
         score=scored["score"],
         in_watchlist=card.id in watchlist_ids,
@@ -55,8 +44,8 @@ def get_cards(
     cards = query.all()
 
     watchlist_ids = {w.card_id for w in db.query(WatchlistItem).all()}
-    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-    card_snaps = [(c, [s for s in c.snapshots if _snap_in_window(s, cutoff)]) for c in cards]
+    # Pass ALL snapshots — scoring now uses "latest vs N days ago"
+    card_snaps = [(c, c.snapshots) for c in cards]
     scored = score_cards(card_snaps)
 
     if min_score is not None:
@@ -77,11 +66,12 @@ def get_card(card_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Card not found")
 
     watchlist_ids = {w.card_id for w in db.query(WatchlistItem).all()}
-    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-    snaps_30d = [s for s in card.snapshots if _snap_in_window(s, cutoff)]
-    scored = score_cards([(card, snaps_30d)])
+
+    # Use ALL snapshots for trend calculation
+    scored = score_cards([(card, card.snapshots)])
     s = scored[0]
 
+    # Return full history sorted by time (no date filter — frontend handles range)
     history = [
         SnapshotPoint(
             scraped_at=snap.scraped_at,
@@ -89,11 +79,10 @@ def get_card(card_id: str, db: Session = Depends(get_db)):
             pricecharting_price_hkd=float(snap.pricecharting_price_hkd) if snap.pricecharting_price_hkd else None,
         )
         for snap in sorted(card.snapshots, key=lambda x: x.scraped_at)
-        if _snap_in_window(snap, cutoff)
     ]
 
-    latest = sorted(card.snapshots, key=lambda s: s.scraped_at, reverse=True)
-    latest_snap = latest[0] if latest else None
+    latest_snaps = sorted(card.snapshots, key=lambda s: s.scraped_at, reverse=True)
+    latest_snap = latest_snaps[0] if latest_snaps else None
 
     return CardDetail(
         id=card.id,
@@ -103,8 +92,9 @@ def get_card(card_id: str, db: Session = Depends(get_db)):
         snkrdunk_price_hkd=float(latest_snap.snkrdunk_price_hkd) if latest_snap and latest_snap.snkrdunk_price_hkd else None,
         pricecharting_price_hkd=float(latest_snap.pricecharting_price_hkd) if latest_snap and latest_snap.pricecharting_price_hkd else None,
         score=s["score"],
-        trend_7d=s["trend_7d"],
-        trend_30d=s["trend_30d"],
+        trend_7d=s["trend_7d"] or None,
+        trend_30d=s["trend_30d"] or None,
+        trend_90d=s["trend_90d"] or None,
         arb_gap=s["arb_gap"],
         in_watchlist=card.id in watchlist_ids,
         history=history,

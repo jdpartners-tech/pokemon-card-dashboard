@@ -11,8 +11,9 @@ class CardSummary(BaseModel):
     card_number: Optional[str]
     snkrdunk_price_hkd: Optional[float]
     pricecharting_price_hkd: Optional[float]
-    trend_7d: float
-    trend_30d: float
+    trend_7d: Optional[float]
+    trend_30d: Optional[float]
+    trend_90d: Optional[float]
     arb_gap: float
     score: float
     in_watchlist: bool
@@ -36,8 +37,9 @@ class CardDetail(BaseModel):
     snkrdunk_price_hkd: Optional[float]
     pricecharting_price_hkd: Optional[float]
     score: float
-    trend_7d: float
-    trend_30d: float
+    trend_7d: Optional[float]
+    trend_30d: Optional[float]
+    trend_90d: Optional[float]
     arb_gap: float
     in_watchlist: bool
     history: list[SnapshotPoint]

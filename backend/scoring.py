@@ -2,6 +2,61 @@ from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 
+def _aware_dt(dt: datetime) -> datetime:
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _get_price(snap) -> Optional[float]:
+    """Return the best available price from a snapshot (prefer snkrdunk, fall back to pricecharting)."""
+    if snap.snkrdunk_price_hkd:
+        return float(snap.snkrdunk_price_hkd)
+    if snap.pricecharting_price_hkd:
+        return float(snap.pricecharting_price_hkd)
+    return None
+
+
+def calculate_trend_vs_days_ago(snapshots, days: int) -> Optional[float]:
+    """
+    % change: latest price vs the most recent snapshot that is at least `days` old.
+    Works well with monthly data — finds the closest available historical point.
+    """
+    if not snapshots:
+        return None
+
+    sorted_snaps = sorted(snapshots, key=lambda s: _aware_dt(s.scraped_at), reverse=True)
+    latest = sorted_snaps[0]
+    latest_price = _get_price(latest)
+    if not latest_price:
+        return None
+
+    latest_dt = _aware_dt(latest.scraped_at)
+    cutoff = latest_dt - timedelta(days=days)
+
+    # snapshots strictly older than `days` ago
+    old_snaps = [s for s in snapshots if _aware_dt(s.scraped_at) <= cutoff]
+    if not old_snaps:
+        return None
+
+    # Pick the most recent one (closest to `days` ago)
+    old_snap = max(old_snaps, key=lambda s: _aware_dt(s.scraped_at))
+    old_price = _get_price(old_snap)
+    if not old_price or old_price == 0:
+        return None
+
+    return round((latest_price - old_price) / old_price * 100, 2)
+
+
+def calculate_arbitrage(snapshots) -> Optional[float]:
+    if not snapshots:
+        return None
+    latest = max(snapshots, key=lambda s: _aware_dt(s.scraped_at))
+    if latest.snkrdunk_price_hkd and latest.pricecharting_price_hkd:
+        return abs(float(latest.snkrdunk_price_hkd) - float(latest.pricecharting_price_hkd))
+    return None
+
+
 def _normalize(values: list[float]) -> list[float]:
     if not values:
         return []
@@ -11,75 +66,37 @@ def _normalize(values: list[float]) -> list[float]:
     return [(v - min_v) / (max_v - min_v) for v in values]
 
 
-def _aware_dt(dt: datetime) -> datetime:
-    """Ensure a datetime is timezone-aware (assume UTC if naive)."""
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt
-
-
-def calculate_price_trend(snapshots, days: int) -> Optional[float]:
-    now = datetime.now(timezone.utc)
-    cutoff = now - timedelta(days=days)
-    prev_cutoff = now - timedelta(days=days * 2)
-
-    recent = [s for s in snapshots if _aware_dt(s.scraped_at) >= cutoff]
-    prev = [s for s in snapshots if prev_cutoff <= _aware_dt(s.scraped_at) < cutoff]
-
-    def avg_prices(snaps):
-        prices = []
-        for s in snaps:
-            if s.snkrdunk_price_hkd:
-                prices.append(float(s.snkrdunk_price_hkd))
-            if s.pricecharting_price_hkd:
-                prices.append(float(s.pricecharting_price_hkd))
-        return sum(prices) / len(prices) if prices else None
-
-    r_avg = avg_prices(recent)
-    p_avg = avg_prices(prev)
-    if r_avg is None or p_avg is None or p_avg == 0:
-        return None
-    return (r_avg - p_avg) / p_avg * 100
-
-
-def calculate_arbitrage(snapshots) -> Optional[float]:
-    if not snapshots:
-        return None
-    latest = max(snapshots, key=lambda s: s.scraped_at)
-    if latest.snkrdunk_price_hkd and latest.pricecharting_price_hkd:
-        return abs(float(latest.snkrdunk_price_hkd) - float(latest.pricecharting_price_hkd))
-    return None
-
-
 def score_cards(card_snapshots: list[tuple]) -> list[dict]:
     """
-    Args: list of (Card, list[PriceSnapshot])
-    Returns: list of score dicts sorted by score descending
+    Args: list of (Card, list[PriceSnapshot]) — pass ALL snapshots per card.
+    Returns: list of score dicts sorted by score descending.
     """
     raw = []
     for card, snapshots in card_snapshots:
         raw.append({
             "card": card,
-            "trend_7d": calculate_price_trend(snapshots, 7) or 0.0,
-            "trend_30d": calculate_price_trend(snapshots, 30) or 0.0,
-            "arb_gap": calculate_arbitrage(snapshots) or 0.0,
-            "volume": float(len(snapshots)),
+            "trend_7d":  calculate_trend_vs_days_ago(snapshots, 7)  or 0.0,
+            "trend_30d": calculate_trend_vs_days_ago(snapshots, 30) or 0.0,
+            "trend_90d": calculate_trend_vs_days_ago(snapshots, 90) or 0.0,
+            "arb_gap":   calculate_arbitrage(snapshots)             or 0.0,
+            "volume":    float(len(snapshots)),
         })
 
-    t7_norm = _normalize([r["trend_7d"] for r in raw])
+    t7_norm  = _normalize([r["trend_7d"]  for r in raw])
     t30_norm = _normalize([r["trend_30d"] for r in raw])
-    arb_norm = _normalize([r["arb_gap"] for r in raw])
-    vol_norm = _normalize([r["volume"] for r in raw])
+    arb_norm = _normalize([r["arb_gap"]   for r in raw])
+    vol_norm = _normalize([r["volume"]    for r in raw])
 
     results = []
     for i, r in enumerate(raw):
         score = (t7_norm[i] * 0.40 + t30_norm[i] * 0.30 + arb_norm[i] * 0.20 + vol_norm[i] * 0.10) * 100
         results.append({
-            "card": r["card"],
-            "score": round(score, 1),
-            "trend_7d": round(r["trend_7d"], 2),
-            "trend_30d": round(r["trend_30d"], 2),
-            "arb_gap": round(r["arb_gap"], 2),
+            "card":      r["card"],
+            "score":     round(score, 1),
+            "trend_7d":  r["trend_7d"],
+            "trend_30d": r["trend_30d"],
+            "trend_90d": r["trend_90d"],
+            "arb_gap":   round(r["arb_gap"], 2),
         })
 
     return sorted(results, key=lambda x: x["score"], reverse=True)
