@@ -40,6 +40,10 @@ app.include_router(report.router)
 @app.post("/admin/scrape", tags=["admin"])
 async def trigger_scrape():
     """Manually trigger a scrape job (runs in background thread)."""
+    if DISABLE_SCHEDULER:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=503, detail="Scraping is disabled on this deployment.")
+    from backend.scheduler import run_scrape_job
     import threading
     threading.Thread(target=run_scrape_job, daemon=True).start()
     return {"ok": True, "message": "Scrape job started in background"}
