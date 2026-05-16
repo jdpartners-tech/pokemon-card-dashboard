@@ -33,6 +33,8 @@ class CardDetail(BaseModel):
     name: str
     set_name: str
     card_number: Optional[str]
+    snkrdunk_price_hkd: Optional[float]
+    pricecharting_price_hkd: Optional[float]
     score: float
     trend_7d: float
     trend_30d: float

@@ -92,11 +92,16 @@ def get_card(card_id: str, db: Session = Depends(get_db)):
         if _snap_in_window(snap, cutoff)
     ]
 
+    latest = sorted(card.snapshots, key=lambda s: s.scraped_at, reverse=True)
+    latest_snap = latest[0] if latest else None
+
     return CardDetail(
         id=card.id,
         name=card.name,
         set_name=card.set_name,
         card_number=card.card_number,
+        snkrdunk_price_hkd=float(latest_snap.snkrdunk_price_hkd) if latest_snap and latest_snap.snkrdunk_price_hkd else None,
+        pricecharting_price_hkd=float(latest_snap.pricecharting_price_hkd) if latest_snap and latest_snap.pricecharting_price_hkd else None,
         score=s["score"],
         trend_7d=s["trend_7d"],
         trend_30d=s["trend_30d"],

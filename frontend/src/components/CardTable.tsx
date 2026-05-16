@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { CardSummary } from "@/lib/types";
 import TrendBadge from "./TrendBadge";
 import WatchlistButton from "./WatchlistButton";
+import CardThumb from "./CardThumb";
 
 type SortKey = "score" | "trend_7d" | "trend_30d" | "arb_gap" | "snkrdunk_price_hkd" | "pricecharting_price_hkd";
 
@@ -66,6 +67,7 @@ export default function CardTable({ cards: initialCards }: Props) {
         <thead className="bg-gray-800 border-b border-gray-700">
           <tr>
             <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wide w-6" />
+            <th className="px-3 py-2 w-10" />
             <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Card</th>
             <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Set</th>
             <Th label="Snkrdunk" k="snkrdunk_price_hkd" />
@@ -83,14 +85,17 @@ export default function CardTable({ cards: initialCards }: Props) {
               onClick={() => router.push(`/card/${card.id}`)}
               className="hover:bg-gray-800/60 cursor-pointer transition-colors"
             >
-              <td className="px-3 py-2.5 text-center">
+              <td className="px-3 py-2 text-center">
                 <WatchlistButton
                   cardId={card.id}
                   inWatchlist={card.in_watchlist}
                   onToggle={(nowIn) => handleToggle(card.id, nowIn)}
                 />
               </td>
-              <td className="px-3 py-2.5 font-medium text-gray-100 whitespace-nowrap">
+              <td className="px-3 py-2">
+                <CardThumb name={card.name} cardNumber={card.card_number} />
+              </td>
+              <td className="px-3 py-2 font-medium text-gray-100 whitespace-nowrap">
                 {card.name}
                 {card.card_number && (
                   <span className="ml-1.5 text-xs text-gray-500">#{card.card_number}</span>
