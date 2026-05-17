@@ -65,7 +65,8 @@ def get_cards(
     positive_only: bool = Query(False),
     db: Session = Depends(get_db),
 ):
-    valid_sorts = {"trend_7d", "trend_30d", "trend_90d", "trend_1y"}
+    trend_sorts = {"trend_7d", "trend_30d", "trend_90d", "trend_1y"}
+    valid_sorts = trend_sorts | {"price_hkd", "name"}
     if sort not in valid_sorts:
         sort = "trend_30d"
 
@@ -79,16 +80,35 @@ def get_cards(
     results = []
     for card in cards:
         metrics = _card_metrics(card.snapshots)
-        trend = metrics[sort]
-        # positive_only: only keep cards with a confirmed upward trend
-        if positive_only and (trend is None or trend <= 0):
-            continue
+
+        if sort in trend_sorts:
+            trend = metrics[sort]
+            if positive_only and (trend is None or trend <= 0):
+                continue
+        else:
+            if positive_only:
+                # positive_only only makes sense with trend sorts — ignore for price/name
+                pass
+
         results.append((card, metrics))
 
-    # null-trend cards sort to the bottom
-    results.sort(key=lambda x: x[1][sort] if x[1][sort] is not None else float("-inf"), reverse=True)
-    results = results[:limit]
+    if sort in trend_sorts:
+        results.sort(
+            key=lambda x: x[1][sort] if x[1][sort] is not None else float("-inf"),
+            reverse=True,
+        )
+    elif sort == "price_hkd":
+        results.sort(
+            key=lambda x: float(
+                _latest_price(x[0].snapshots, "pricecharting_price_hkd") or
+                _latest_price(x[0].snapshots, "snkrdunk_price_hkd") or 0
+            ),
+            reverse=True,
+        )
+    elif sort == "name":
+        results.sort(key=lambda x: x[0].name.lower())
 
+    results = results[:limit]
     return [_build_summary(card, metrics, watchlist_ids) for card, metrics in results]
 
 

@@ -6,7 +6,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export interface CardFilters {
   search?: string;
-  sort?: "trend_7d" | "trend_30d" | "trend_90d" | "trend_1y";
+  sort?: "trend_7d" | "trend_30d" | "trend_90d" | "trend_1y" | "price_hkd" | "name";
   limit?: number;
   positive_only?: boolean;
 }
