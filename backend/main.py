@@ -47,6 +47,34 @@ async def trigger_scrape():
     return {"ok": True, "message": "Scrape job started in background"}
 
 
+@app.post("/admin/backfill-images", tags=["admin"])
+async def backfill_images():
+    """Fetch image_url and accent_color from pokemontcg.io for all cards missing them."""
+    import threading
+
+    def _run():
+        from backend.database import SessionLocal
+        from backend.models import Card
+        from backend.scrapers.pokemontcg import fetch_card_image
+        db = SessionLocal()
+        try:
+            cards_missing = db.query(Card).filter(Card.image_url.is_(None)).all()
+            logging.info(f"Backfilling images for {len(cards_missing)} cards")
+            for card in cards_missing:
+                try:
+                    image_url, accent_color = fetch_card_image(card.name, card.card_number)
+                    card.image_url = image_url
+                    card.accent_color = accent_color
+                    db.commit()
+                except Exception as e:
+                    logging.warning(f"Image fetch failed for {card.name}: {e}")
+        finally:
+            db.close()
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {"ok": True, "message": "Image backfill started in background"}
+
+
 @app.post("/admin/backfill", tags=["admin"])
 async def trigger_backfill():
     """Backfill full PSA 10 price history from PriceCharting for all cards (runs in background thread)."""
