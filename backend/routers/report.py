@@ -3,11 +3,10 @@ import csv
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from backend.database import get_db
 from backend.models import Card, WatchlistItem
-from backend.scoring import score_cards
-from backend.routers.cards import _build_summary, _snap_in_window
+from backend.routers.cards import _build_summary, _card_trends
 
 router = APIRouter(prefix="/report", tags=["report"])
 
@@ -16,32 +15,33 @@ router = APIRouter(prefix="/report", tags=["report"])
 def generate_report(db: Session = Depends(get_db)):
     watchlist_ids = {w.card_id for w in db.query(WatchlistItem).all()}
     cards = db.query(Card).all()
-    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-    card_snaps = [(c, [s for s in c.snapshots if _snap_in_window(s, cutoff)]) for c in cards]
-    scored = score_cards(card_snaps)
 
-    top_20 = scored[:20]
-    watchlist_scored = [s for s in scored if s["card"].id in watchlist_ids]
-    combined = {s["card"].id: s for s in top_20}
-    for s in watchlist_scored:
-        combined[s["card"].id] = s
-    rows = sorted(combined.values(), key=lambda x: x["score"], reverse=True)
+    results = []
+    for card in cards:
+        trends = _card_trends(card.snapshots)
+        results.append((card, trends))
+
+    # Report: watchlist cards first, then all others sorted by 7d trend
+    watchlist_results = [(c, t) for c, t in results if c.id in watchlist_ids]
+    other_results = [(c, t) for c, t in results if c.id not in watchlist_ids]
+    other_results.sort(key=lambda x: x[1]["trend_7d"] or float("-inf"), reverse=True)
+
+    rows = watchlist_results + other_results[:20]
 
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(["Name", "Set", "snkrdunk (HKD)", "PriceCharting (HKD)", "7-day %", "30-day %", "Arbitrage (HKD)", "Score"])
+    writer.writerow(["Name", "Set", "Snkrdunk (HKD)", "PriceCharting (HKD)", "7-day %", "30-day %", "90-day %"])
 
-    for s in rows:
-        summary = _build_summary(s, watchlist_ids)
+    for card, trends in rows:
+        summary = _build_summary(card, trends, watchlist_ids)
         writer.writerow([
             summary.name,
             summary.set_name,
             f"{summary.snkrdunk_price_hkd:.0f}" if summary.snkrdunk_price_hkd else "",
             f"{summary.pricecharting_price_hkd:.0f}" if summary.pricecharting_price_hkd else "",
-            f"{summary.trend_7d:+.1f}%",
-            f"{summary.trend_30d:+.1f}%",
-            f"{summary.arb_gap:.0f}",
-            f"{summary.score:.1f}",
+            f"{summary.trend_7d:+.1f}%" if summary.trend_7d is not None else "",
+            f"{summary.trend_30d:+.1f}%" if summary.trend_30d is not None else "",
+            f"{summary.trend_90d:+.1f}%" if summary.trend_90d is not None else "",
         ])
 
     output.seek(0)

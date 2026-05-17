@@ -6,7 +6,7 @@ import type { CardSummary } from "@/lib/types";
 import WatchlistButton from "./WatchlistButton";
 import CardThumb from "./CardThumb";
 
-type SortKey = "score" | "trend_7d" | "trend_30d" | "trend_90d" | "snkrdunk_price_hkd" | "pricecharting_price_hkd";
+type SortKey = "trend_7d" | "trend_30d" | "trend_90d" | "snkrdunk_price_hkd" | "pricecharting_price_hkd";
 
 interface Props {
   cards: CardSummary[];
@@ -29,7 +29,7 @@ function TrendCell({ value }: { value: number | null }) {
 export default function CardTable({ cards: initialCards }: Props) {
   const router = useRouter();
   const [cards, setCards] = useState(initialCards);
-  const [sortKey, setSortKey] = useState<SortKey>("score");
+  const [sortKey, setSortKey] = useState<SortKey>("trend_7d");
   const [asc, setAsc] = useState(false);
 
   function sort(key: SortKey) {
@@ -81,7 +81,6 @@ export default function CardTable({ cards: initialCards }: Props) {
             <Th label="7d" k="trend_7d" />
             <Th label="1m" k="trend_30d" />
             <Th label="3m" k="trend_90d" />
-            <Th label="Score" k="score" />
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-800">
@@ -117,15 +116,6 @@ export default function CardTable({ cards: initialCards }: Props) {
               <td className="px-3 py-2 text-right"><TrendCell value={card.trend_7d} /></td>
               <td className="px-3 py-2 text-right"><TrendCell value={card.trend_30d} /></td>
               <td className="px-3 py-2 text-right"><TrendCell value={card.trend_90d} /></td>
-              <td className="px-3 py-2 text-right">
-                <span
-                  className={`inline-block font-bold tabular-nums ${
-                    card.score >= 70 ? "text-green-400" : card.score >= 40 ? "text-yellow-400" : "text-gray-400"
-                  }`}
-                >
-                  {card.score.toFixed(1)}
-                </span>
-              </td>
             </tr>
           ))}
         </tbody>

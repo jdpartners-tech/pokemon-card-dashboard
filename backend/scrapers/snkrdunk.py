@@ -21,6 +21,7 @@ class ScrapedCard:
     card_number: str
     snkrdunk_id: str
     psa10_price_hkd: float
+    product_url: str = ""
 
 
 def scrape_snkrdunk(max_pages: int = 20) -> list[ScrapedCard]:
@@ -143,6 +144,7 @@ def _parse_item(item) -> ScrapedCard | None:
         price = float(price_text)
         href = link_el.get_attribute("href") if link_el else ""
         snkrdunk_id = (href or "").strip("/").split("/")[-1] or full_name.lower().replace(" ", "-")
+        product_url = f"https://snkrdunk.com{href}" if href and href.startswith("/") else ""
 
         name, set_name, card_number = _parse_name(full_name)
 
@@ -152,6 +154,7 @@ def _parse_item(item) -> ScrapedCard | None:
             card_number=card_number,
             snkrdunk_id=snkrdunk_id,
             psa10_price_hkd=price,
+            product_url=product_url,
         )
     except Exception as e:
         logger.warning(f"Snkrdunk item parse failed: {e}")

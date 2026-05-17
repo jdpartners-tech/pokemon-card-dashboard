@@ -8,8 +8,6 @@ export interface CardSummary {
   trend_7d: number | null;
   trend_30d: number | null;
   trend_90d: number | null;
-  arb_gap: number;
-  score: number;
   in_watchlist: boolean;
 }
 

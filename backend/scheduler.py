@@ -20,10 +20,23 @@ def run_scrape_job():
             logger.error(f"FX fetch failed: {e}")
             return
 
-        _ingest_pricecharting(db, fx_rate)
-        _ingest_snkrdunk(db)
+        pc_prices = _collect_pricecharting(db, fx_rate)
+        snkr_prices = _collect_snkrdunk(db)
+
+        all_card_ids = set(pc_prices) | set(snkr_prices)
+        for card_id in all_card_ids:
+            snap = PriceSnapshot(card_id=card_id)
+            if card_id in pc_prices:
+                usd, hkd = pc_prices[card_id]
+                snap.pricecharting_price_usd = Decimal(str(usd))
+                snap.pricecharting_price_hkd = Decimal(str(hkd))
+                snap.usd_to_hkd_rate = Decimal(str(round(fx_rate, 4)))
+            if card_id in snkr_prices:
+                snap.snkrdunk_price_hkd = Decimal(str(snkr_prices[card_id]))
+            db.add(snap)
+
         db.commit()
-        logger.info("Scrape job complete")
+        logger.info(f"Scrape job complete: {len(all_card_ids)} cards updated")
     except Exception as e:
         db.rollback()
         logger.error(f"Scrape job failed: {e}")
@@ -42,7 +55,6 @@ def _get_or_create_card(db, *, name, set_name, card_number, pricecharting_id=Non
             if pricecharting_id and not card.pricecharting_id:
                 card.pricecharting_id = pricecharting_id
             return card
-    # Match by name + set as a fallback to avoid duplicates
     card = db.query(Card).filter(Card.name == name, Card.set_name == set_name).first()
     if card:
         if pricecharting_id and not card.pricecharting_id:
@@ -62,13 +74,15 @@ def _get_or_create_card(db, *, name, set_name, card_number, pricecharting_id=Non
     return card
 
 
-def _ingest_pricecharting(db, fx_rate: float):
+def _collect_pricecharting(db, fx_rate: float) -> dict:
+    """Scrape PriceCharting and return {card.id: (price_usd, price_hkd)}."""
     try:
         scraped = scrape_pricecharting()
     except Exception as e:
         logger.error(f"PriceCharting scrape failed: {e}")
-        return
+        return {}
 
+    prices = {}
     for item in scraped:
         try:
             card = _get_or_create_card(
@@ -79,26 +93,23 @@ def _ingest_pricecharting(db, fx_rate: float):
                 pricecharting_id=item.pricecharting_id,
             )
             price_hkd = round(item.psa10_price_usd * fx_rate, 2)
-            snap = PriceSnapshot(
-                card_id=card.id,
-                pricecharting_price_usd=Decimal(str(item.psa10_price_usd)),
-                pricecharting_price_hkd=Decimal(str(price_hkd)),
-                usd_to_hkd_rate=Decimal(str(round(fx_rate, 4))),
-            )
-            db.add(snap)
+            prices[card.id] = (item.psa10_price_usd, price_hkd)
         except Exception as e:
-            logger.warning(f"PC ingest row failed ({item.name}): {e}")
+            logger.warning(f"PC collect row failed ({item.name}): {e}")
 
-    logger.info(f"PriceCharting: ingested {len(scraped)} cards")
+    logger.info(f"PriceCharting: collected {len(prices)} cards")
+    return prices
 
 
-def _ingest_snkrdunk(db):
+def _collect_snkrdunk(db) -> dict:
+    """Scrape Snkrdunk and return {card.id: price_hkd}."""
     try:
         scraped = scrape_snkrdunk()
     except Exception as e:
         logger.error(f"Snkrdunk scrape failed: {e}")
-        return
+        return {}
 
+    prices = {}
     for item in scraped:
         try:
             card = _get_or_create_card(
@@ -108,19 +119,15 @@ def _ingest_snkrdunk(db):
                 card_number=item.card_number,
                 snkrdunk_id=item.snkrdunk_id,
             )
-            snap = PriceSnapshot(
-                card_id=card.id,
-                snkrdunk_price_hkd=Decimal(str(item.psa10_price_hkd)),
-            )
-            db.add(snap)
+            prices[card.id] = item.psa10_price_hkd
         except Exception as e:
-            logger.warning(f"Snkrdunk ingest row failed ({item.name}): {e}")
+            logger.warning(f"Snkrdunk collect row failed ({item.name}): {e}")
 
-    logger.info(f"Snkrdunk: ingested {len(scraped)} cards")
+    logger.info(f"Snkrdunk: collected {len(prices)} cards")
+    return prices
 
 
 def create_scheduler() -> BackgroundScheduler:
     scheduler = BackgroundScheduler()
-    # Run once at startup, then every 6 hours
     scheduler.add_job(run_scrape_job, "interval", hours=6, id="scrape", replace_existing=True)
     return scheduler

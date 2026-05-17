@@ -11,14 +11,14 @@ async function json<T>(url: string, init?: RequestInit): Promise<T> {
 export interface CardFilters {
   search?: string;
   set?: string;
-  min_score?: number;
+  trending_up?: boolean;
 }
 
 export function cardsUrl(filters: CardFilters): string {
   const params = new URLSearchParams();
   if (filters.search) params.set("search", filters.search);
   if (filters.set) params.set("set", filters.set);
-  if (filters.min_score != null) params.set("min_score", String(filters.min_score));
+  if (filters.trending_up) params.set("trending_up", "true");
   const qs = params.toString();
   return `${BASE}/cards${qs ? `?${qs}` : ""}`;
 }
@@ -41,6 +41,14 @@ export async function removeFromWatchlist(cardId: string): Promise<void> {
 
 export async function triggerScrape(): Promise<void> {
   await json(`${BASE}/admin/scrape`, { method: "POST" });
+}
+
+export async function triggerBackfill(): Promise<void> {
+  await json(`${BASE}/admin/backfill`, { method: "POST" });
+}
+
+export async function triggerSnkrdunkBackfill(): Promise<void> {
+  await json(`${BASE}/admin/backfill/snkrdunk`, { method: "POST" });
 }
 
 export const reportUrl = `${BASE}/report`;

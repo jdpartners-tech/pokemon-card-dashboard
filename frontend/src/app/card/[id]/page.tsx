@@ -64,14 +64,6 @@ export default function CardPage({ params }: { params: Promise<{ id: string }> }
           <p className="text-gray-400 mb-4">{card.set_name}</p>
           <div className="flex items-center gap-3">
             <WatchlistButton cardId={card.id} inWatchlist={card.in_watchlist} />
-            <span
-              className={`text-3xl font-bold tabular-nums ${
-                card.score >= 70 ? "text-green-400" : card.score >= 40 ? "text-yellow-400" : "text-gray-400"
-              }`}
-            >
-              {card.score.toFixed(1)}
-            </span>
-            <span className="text-xs text-gray-500 leading-tight">profitability<br />score</span>
           </div>
         </div>
       </div>

@@ -4,27 +4,48 @@ from typing import Optional
 from backend.database import get_db
 from backend.models import Card, PriceSnapshot, WatchlistItem
 from backend.schemas import CardSummary, CardDetail, SnapshotPoint
-from backend.scoring import score_cards
+from backend.scoring import calculate_trend_vs_days_ago
 
 router = APIRouter(prefix="/cards", tags=["cards"])
 
 
-def _build_summary(scored: dict, watchlist_ids: set) -> CardSummary:
-    card = scored["card"]
-    snaps = sorted(card.snapshots, key=lambda s: s.scraped_at, reverse=True)
-    latest = snaps[0] if snaps else None
+def _snap_in_window(snap, cutoff) -> bool:
+    from datetime import timezone
+    dt = snap.scraped_at
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt >= cutoff
+
+
+def _latest_price(snaps, field: str):
+    """Return the value of `field` from the most recent snapshot that has it."""
+    for snap in sorted(snaps, key=lambda s: s.scraped_at, reverse=True):
+        val = getattr(snap, field)
+        if val:
+            return float(val)
+    return None
+
+
+def _card_trends(snapshots):
+    return {
+        "trend_7d":  calculate_trend_vs_days_ago(snapshots, 7),
+        "trend_30d": calculate_trend_vs_days_ago(snapshots, 30),
+        "trend_90d": calculate_trend_vs_days_ago(snapshots, 90),
+    }
+
+
+def _build_summary(card: Card, trends: dict, watchlist_ids: set) -> CardSummary:
+    snaps = card.snapshots
     return CardSummary(
         id=card.id,
         name=card.name,
         set_name=card.set_name,
         card_number=card.card_number,
-        snkrdunk_price_hkd=float(latest.snkrdunk_price_hkd) if latest and latest.snkrdunk_price_hkd else None,
-        pricecharting_price_hkd=float(latest.pricecharting_price_hkd) if latest and latest.pricecharting_price_hkd else None,
-        trend_7d=scored["trend_7d"] or None,
-        trend_30d=scored["trend_30d"] or None,
-        trend_90d=scored["trend_90d"] or None,
-        arb_gap=scored["arb_gap"],
-        score=scored["score"],
+        snkrdunk_price_hkd=_latest_price(snaps, "snkrdunk_price_hkd"),
+        pricecharting_price_hkd=_latest_price(snaps, "pricecharting_price_hkd"),
+        trend_7d=trends["trend_7d"],
+        trend_30d=trends["trend_30d"],
+        trend_90d=trends["trend_90d"],
         in_watchlist=card.id in watchlist_ids,
     )
 
@@ -32,7 +53,7 @@ def _build_summary(scored: dict, watchlist_ids: set) -> CardSummary:
 @router.get("", response_model=list[CardSummary])
 def get_cards(
     set: Optional[str] = Query(None),
-    min_score: Optional[float] = Query(None),
+    trending_up: Optional[bool] = Query(None),
     search: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
@@ -44,14 +65,18 @@ def get_cards(
     cards = query.all()
 
     watchlist_ids = {w.card_id for w in db.query(WatchlistItem).all()}
-    # Pass ALL snapshots — scoring now uses "latest vs N days ago"
-    card_snaps = [(c, c.snapshots) for c in cards]
-    scored = score_cards(card_snaps)
 
-    if min_score is not None:
-        scored = [s for s in scored if s["score"] >= min_score]
+    results = []
+    for card in cards:
+        trends = _card_trends(card.snapshots)
+        if trending_up and not (trends["trend_7d"] and trends["trend_7d"] > 0):
+            continue
+        results.append((card, trends))
 
-    return [_build_summary(s, watchlist_ids) for s in scored]
+    # Sort by 7d trend descending (nulls last)
+    results.sort(key=lambda x: x[1]["trend_7d"] or float("-inf"), reverse=True)
+
+    return [_build_summary(card, trends, watchlist_ids) for card, trends in results]
 
 
 @router.get("/{card_id}", response_model=CardDetail)
@@ -66,12 +91,8 @@ def get_card(card_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Card not found")
 
     watchlist_ids = {w.card_id for w in db.query(WatchlistItem).all()}
+    trends = _card_trends(card.snapshots)
 
-    # Use ALL snapshots for trend calculation
-    scored = score_cards([(card, card.snapshots)])
-    s = scored[0]
-
-    # Return full history sorted by time (no date filter — frontend handles range)
     history = [
         SnapshotPoint(
             scraped_at=snap.scraped_at,
@@ -81,21 +102,16 @@ def get_card(card_id: str, db: Session = Depends(get_db)):
         for snap in sorted(card.snapshots, key=lambda x: x.scraped_at)
     ]
 
-    latest_snaps = sorted(card.snapshots, key=lambda s: s.scraped_at, reverse=True)
-    latest_snap = latest_snaps[0] if latest_snaps else None
-
     return CardDetail(
         id=card.id,
         name=card.name,
         set_name=card.set_name,
         card_number=card.card_number,
-        snkrdunk_price_hkd=float(latest_snap.snkrdunk_price_hkd) if latest_snap and latest_snap.snkrdunk_price_hkd else None,
-        pricecharting_price_hkd=float(latest_snap.pricecharting_price_hkd) if latest_snap and latest_snap.pricecharting_price_hkd else None,
-        score=s["score"],
-        trend_7d=s["trend_7d"] or None,
-        trend_30d=s["trend_30d"] or None,
-        trend_90d=s["trend_90d"] or None,
-        arb_gap=s["arb_gap"],
+        snkrdunk_price_hkd=_latest_price(card.snapshots, "snkrdunk_price_hkd"),
+        pricecharting_price_hkd=_latest_price(card.snapshots, "pricecharting_price_hkd"),
+        trend_7d=trends["trend_7d"],
+        trend_30d=trends["trend_30d"],
+        trend_90d=trends["trend_90d"],
         in_watchlist=card.id in watchlist_ids,
         history=history,
     )

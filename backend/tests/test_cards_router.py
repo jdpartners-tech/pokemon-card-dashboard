@@ -27,8 +27,8 @@ def test_get_cards_returns_list(client, db):
     data = resp.json()
     assert isinstance(data, list)
     assert len(data) >= 1
-    assert "score" in data[0]
     assert "name" in data[0]
+    assert "trend_7d" in data[0]
 
 
 def test_get_cards_search_filter(client, db):

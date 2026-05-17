@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime, timezone, timedelta
 from decimal import Decimal
 import pytest
-from backend.scoring import score_cards, calculate_price_trend, calculate_arbitrage
+from backend.scoring import score_cards, calculate_trend_vs_days_ago as calculate_price_trend, calculate_arbitrage
 from backend.models import Card, PriceSnapshot
 
 

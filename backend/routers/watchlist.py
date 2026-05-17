@@ -1,11 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone, timedelta
 from backend.database import get_db
 from backend.models import Card, WatchlistItem
 from backend.schemas import CardSummary, WatchlistAdd
-from backend.scoring import score_cards
-from backend.routers.cards import _build_summary, _snap_in_window
+from backend.routers.cards import _build_summary, _card_trends
 
 router = APIRouter(prefix="/watchlist", tags=["watchlist"])
 
@@ -15,10 +13,14 @@ def get_watchlist(db: Session = Depends(get_db)):
     items = db.query(WatchlistItem).all()
     watchlist_ids = {w.card_id for w in items}
     cards = [item.card for item in items]
-    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
-    card_snaps = [(c, [s for s in c.snapshots if _snap_in_window(s, cutoff)]) for c in cards]
-    scored = score_cards(card_snaps)
-    return [_build_summary(s, watchlist_ids) for s in scored]
+
+    results = []
+    for card in cards:
+        trends = _card_trends(card.snapshots)
+        results.append((card, trends))
+
+    results.sort(key=lambda x: x[1]["trend_7d"] or float("-inf"), reverse=True)
+    return [_build_summary(card, trends, watchlist_ids) for card, trends in results]
 
 
 @router.post("", response_model=dict)

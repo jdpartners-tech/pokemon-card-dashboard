@@ -1,22 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { triggerScrape } from "@/lib/api";
+import { triggerScrape, triggerBackfill, triggerSnkrdunkBackfill } from "@/lib/api";
 
 type Status = "idle" | "running" | "done" | "error" | "disabled";
 
-export default function ScrapeTrigger() {
+function AdminButton({
+  onAction,
+  labels,
+}: {
+  onAction: () => Promise<void>;
+  labels: { idle: string; running: string; done: string; error: string };
+}) {
   const [status, setStatus] = useState<Status>("idle");
 
   async function handleClick() {
-    if (status === "disabled") return;
+    if (status === "running" || status === "disabled") return;
     setStatus("running");
     try {
-      await triggerScrape();
+      await onAction();
       setStatus("done");
       setTimeout(() => setStatus("idle"), 3000);
     } catch (err: unknown) {
-      // 503 means scraping is disabled on this deployment
       const is503 = err instanceof Error && err.message.startsWith("503");
       if (is503) {
         setStatus("disabled");
@@ -30,16 +35,16 @@ export default function ScrapeTrigger() {
   if (status === "disabled") {
     return (
       <span className="px-3 py-1.5 text-sm text-gray-600 border border-gray-800 rounded">
-        Scraping disabled
+        Disabled
       </span>
     );
   }
 
   const label =
-    status === "running" ? "Starting…" :
-    status === "done"    ? "Scrape started ✓" :
-    status === "error"   ? "Failed ✗" :
-    "Run scrape now";
+    status === "running" ? labels.running :
+    status === "done"    ? labels.done :
+    status === "error"   ? labels.error :
+    labels.idle;
 
   return (
     <button
@@ -53,5 +58,24 @@ export default function ScrapeTrigger() {
     >
       {label}
     </button>
+  );
+}
+
+export default function ScrapeTrigger() {
+  return (
+    <div className="flex gap-2">
+      <AdminButton
+        onAction={triggerScrape}
+        labels={{ idle: "Run scrape now", running: "Starting…", done: "Scrape started ✓", error: "Failed ✗" }}
+      />
+      <AdminButton
+        onAction={triggerBackfill}
+        labels={{ idle: "Backfill PC history", running: "Starting…", done: "Backfill started ✓", error: "Failed ✗" }}
+      />
+      <AdminButton
+        onAction={triggerSnkrdunkBackfill}
+        labels={{ idle: "Backfill Snkrdunk", running: "Starting…", done: "Backfill started ✓", error: "Failed ✗" }}
+      />
+    </div>
   );
 }
