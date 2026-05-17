@@ -1,0 +1,98 @@
+<h2>Home Page Layout — Top 50 Trending Cards</h2>
+<p class="subtitle">Which layout feels right for displaying the trending PSA 10 cards?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="table" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#0f172a;border-radius:6px;padding:10px;font-size:11px;color:#94a3b8;font-family:monospace;">
+        <div style="display:flex;gap:6px;align-items:center;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:6px;">
+          <div style="width:28px;height:38px;background:#1e293b;border-radius:3px;flex-shrink:0;"></div>
+          <div style="flex:1;">
+            <div style="color:#f1f5f9;font-weight:600;">Charizard</div>
+            <div style="color:#64748b;font-size:10px;">Base Set · #4/102</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="color:#f1f5f9;">HK$42,000</div>
+            <div style="color:#22c55e;font-size:10px;">▲ 12.4%</div>
+          </div>
+          <div style="color:#22c55e;font-size:10px;width:40px;text-align:right;">▲ 8.1%</div>
+          <div style="color:#22c55e;font-size:10px;width:40px;text-align:right;">▲ 31.2%</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;border-bottom:1px solid #1e293b;padding-bottom:6px;margin-bottom:6px;">
+          <div style="width:28px;height:38px;background:#1e293b;border-radius:3px;flex-shrink:0;"></div>
+          <div style="flex:1;">
+            <div style="color:#f1f5f9;font-weight:600;">Blastoise</div>
+            <div style="color:#64748b;font-size:10px;">Base Set · #2/102</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="color:#f1f5f9;">HK$18,500</div>
+            <div style="color:#22c55e;font-size:10px;">▲ 9.7%</div>
+          </div>
+          <div style="color:#22c55e;font-size:10px;width:40px;text-align:right;">▲ 5.2%</div>
+          <div style="color:#22c55e;font-size:10px;width:40px;text-align:right;">▲ 18.9%</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <div style="width:28px;height:38px;background:#1e293b;border-radius:3px;flex-shrink:0;"></div>
+          <div style="flex:1;">
+            <div style="color:#f1f5f9;font-weight:600;">Venusaur</div>
+            <div style="color:#64748b;font-size:10px;">Base Set · #15/102</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="color:#f1f5f9;">HK$14,200</div>
+            <div style="color:#22c55e;font-size:10px;">▲ 7.3%</div>
+          </div>
+          <div style="color:#22c55e;font-size:10px;width:40px;text-align:right;">▲ 4.1%</div>
+          <div style="color:#22c55e;font-size:10px;width:40px;text-align:right;">▲ 12.0%</div>
+        </div>
+        <div style="display:flex;gap:6px;color:#475569;font-size:9px;margin-top:8px;padding-top:4px;border-top:1px solid #1e293b;">
+          <div style="width:28px;flex-shrink:0;"></div>
+          <div style="flex:1;">Card · Set</div>
+          <div style="width:60px;text-align:right;">Price</div>
+          <div style="width:40px;text-align:right;">7d</div>
+          <div style="width:40px;text-align:right;">30d</div>
+          <div style="width:40px;text-align:right;">90d</div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Dense Table</h3>
+      <p>Compact rows with thumbnail, name, price, and all trend columns visible at once. Best for scanning many cards quickly. Click a row to open the detail page.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="grid" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div style="background:#0f172a;border-radius:6px;padding:10px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+          <div style="background:#1e293b;border-radius:6px;padding:8px;text-align:center;">
+            <div style="width:48px;height:64px;background:#0f172a;border-radius:4px;margin:0 auto 6px;"></div>
+            <div style="font-size:10px;color:#f1f5f9;font-weight:600;font-family:monospace;">Charizard</div>
+            <div style="font-size:9px;color:#64748b;font-family:monospace;">Base Set</div>
+            <div style="font-size:11px;color:#f1f5f9;font-family:monospace;margin-top:4px;">HK$42,000</div>
+            <div style="font-size:11px;color:#22c55e;font-family:monospace;">▲ 9.7%</div>
+          </div>
+          <div style="background:#1e293b;border-radius:6px;padding:8px;text-align:center;">
+            <div style="width:48px;height:64px;background:#0f172a;border-radius:4px;margin:0 auto 6px;"></div>
+            <div style="font-size:10px;color:#f1f5f9;font-weight:600;font-family:monospace;">Blastoise</div>
+            <div style="font-size:9px;color:#64748b;font-family:monospace;">Base Set</div>
+            <div style="font-size:11px;color:#f1f5f9;font-family:monospace;margin-top:4px;">HK$18,500</div>
+            <div style="font-size:11px;color:#22c55e;font-family:monospace;">▲ 7.3%</div>
+          </div>
+          <div style="background:#1e293b;border-radius:6px;padding:8px;text-align:center;">
+            <div style="width:48px;height:64px;background:#0f172a;border-radius:4px;margin:0 auto 6px;"></div>
+            <div style="font-size:10px;color:#f1f5f9;font-weight:600;font-family:monospace;">Venusaur</div>
+            <div style="font-size:9px;color:#64748b;font-family:monospace;">Base Set</div>
+            <div style="font-size:11px;color:#f1f5f9;font-family:monospace;margin-top:4px;">HK$14,200</div>
+            <div style="font-size:11px;color:#22c55e;font-family:monospace;">▲ 5.1%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Card Grid</h3>
+      <p>Each card shown as a tile with the card image prominent. Shows name, set, price, and the primary trend. Fewer cards visible at once but more visual. Good if you care about seeing the actual card art.</p>
+    </div>
+  </div>
+
+</div>

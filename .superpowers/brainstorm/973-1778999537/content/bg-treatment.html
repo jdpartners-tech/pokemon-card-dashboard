@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Background Treatment Options</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #080c14; color: #f1f5f9; font-family: ui-sans-serif, system-ui, sans-serif; }
+
+  h1 { text-align: center; padding: 24px 16px 8px; font-size: 18px; color: #f1f5f9; }
+  .subtitle { text-align: center; color: #64748b; font-size: 13px; padding-bottom: 24px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 0 24px 32px; }
+
+  .option {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .option:hover { border-color: #3b82f6; }
+  .option.selected { border-color: #3b82f6; box-shadow: 0 0 0 1px #3b82f6; }
+
+  .option-label {
+    text-align: center;
+    padding: 10px;
+    font-size: 13px;
+    color: #94a3b8;
+    background: #0f172a;
+    font-weight: 600;
+  }
+
+  /* ── Option A: Fixed dark overlay ── */
+  .preview-a {
+    position: relative;
+    height: 280px;
+    background-image: url('bg1.jpg');
+    background-size: cover;
+    background-position: center top;
+  }
+  .preview-a::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(8, 12, 20, 0.82);
+  }
+
+  /* ── Option B: Blurred + overlay ── */
+  .preview-b {
+    position: relative;
+    height: 280px;
+    overflow: hidden;
+  }
+  .preview-b .bgimg {
+    position: absolute; inset: -10px;
+    background-image: url('bg1.jpg');
+    background-size: cover;
+    background-position: center top;
+    filter: blur(6px) brightness(0.35);
+    transform: scale(1.05);
+  }
+
+  /* ── Option C: Left strip only ── */
+  .preview-c {
+    position: relative;
+    height: 280px;
+    background: #080c14;
+    display: flex;
+  }
+  .preview-c .strip {
+    width: 120px;
+    flex-shrink: 0;
+    background-image: url('bg1.jpg');
+    background-size: cover;
+    background-position: center top;
+    position: relative;
+  }
+  .preview-c .strip::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(to right, rgba(8,12,20,0.3), rgba(8,12,20,0.95));
+  }
+  .preview-c .content { flex: 1; }
+
+  /* ── UI mockup overlaid ── */
+  .ui-overlay {
+    position: absolute; inset: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+    gap: 8px;
+  }
+
+  .mock-header {
+    font-size: 16px;
+    font-weight: 700;
+    color: #f8fafc;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+    margin-bottom: 4px;
+  }
+  .mock-sub {
+    font-size: 10px;
+    color: #94a3b8;
+    margin-bottom: 6px;
+  }
+
+  .mock-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 6px;
+    padding: 6px 8px;
+    border-left: 3px solid #ef4444;
+  }
+  .mock-row:nth-child(3) { border-left-color: #eab308; }
+  .mock-row:nth-child(4) { border-left-color: #3b82f6; }
+
+  .mock-img {
+    width: 28px; height: 38px;
+    background: rgba(30,41,59,0.8);
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .mock-name { flex: 1; font-size: 10px; color: #f1f5f9; font-weight: 600; }
+  .mock-set { font-size: 9px; color: #64748b; }
+  .mock-price { font-size: 10px; color: #f1f5f9; white-space: nowrap; font-family: monospace; }
+  .mock-trend { font-size: 11px; color: #22c55e; font-weight: 700; font-family: monospace; white-space: nowrap; }
+
+  /* strip version (C) uses relative positioning */
+  .preview-c .ui-overlay { position: relative; padding-left: 8px; }
+  .preview-c .ui-block { flex: 1; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+</style>
+<script>
+function toggleSelect(el) {
+  document.querySelectorAll('.option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  if (window.recordChoice) recordChoice(el.dataset.choice, el.querySelector('.option-label').textContent.trim());
+}
+</script>
+</head>
+<body>
+
+<h1>Background Treatment Options</h1>
+<p class="subtitle">Same images, three ways of using them. Which feels right?</p>
+
+<div class="grid">
+
+  <!-- Option A: Solid dark overlay -->
+  <div class="option" data-choice="solid-overlay" onclick="toggleSelect(this)">
+    <div class="preview-a">
+      <div class="ui-overlay">
+        <div class="mock-header">Top Trending PSA 10</div>
+        <div class="mock-sub">50 cards · sorted by 30d trend</div>
+        <div class="mock-row">
+          <div class="mock-img"></div>
+          <div style="flex:1"><div class="mock-name">Pikachu ex SAR</div><div class="mock-set">M2a · MEGA Dream ex</div></div>
+          <div class="mock-price">HK$28,400</div>
+          <div class="mock-trend">▲18.4%</div>
+        </div>
+        <div class="mock-row">
+          <div class="mock-img"></div>
+          <div style="flex:1"><div class="mock-name">Charizard Holo</div><div class="mock-set">#4/102 · Base Set</div></div>
+          <div class="mock-price">HK$42,000</div>
+          <div class="mock-trend">▲14.7%</div>
+        </div>
+        <div class="mock-row">
+          <div class="mock-img"></div>
+          <div style="flex:1"><div class="mock-name">Umbreon ex SAR</div><div class="mock-set">SV8a · Terastal Fest</div></div>
+          <div class="mock-price">HK$9,800</div>
+          <div class="mock-trend">▲11.2%</div>
+        </div>
+      </div>
+    </div>
+    <div class="option-label">A — Solid Dark Overlay (82% opacity)<br><span style="font-size:11px;color:#475569;font-weight:400;">Pokemon faintly visible behind the table</span></div>
+  </div>
+
+  <!-- Option B: Blurred overlay -->
+  <div class="option" data-choice="blurred" onclick="toggleSelect(this)">
+    <div class="preview-b">
+      <div class="bgimg"></div>
+      <div class="ui-overlay">
+        <div class="mock-header">Top Trending PSA 10</div>
+        <div class="mock-sub">50 cards · sorted by 30d trend</div>
+        <div class="mock-row">
+          <div class="mock-img"></div>
+          <div style="flex:1"><div class="mock-name">Pikachu ex SAR</div><div class="mock-set">M2a · MEGA Dream ex</div></div>
+          <div class="mock-price">HK$28,400</div>
+          <div class="mock-trend">▲18.4%</div>
+        </div>
+        <div class="mock-row">
+          <div class="mock-img"></div>
+          <div style="flex:1"><div class="mock-name">Charizard Holo</div><div class="mock-set">#4/102 · Base Set</div></div>
+          <div class="mock-price">HK$42,000</div>
+          <div class="mock-trend">▲14.7%</div>
+        </div>
+        <div class="mock-row">
+          <div class="mock-img"></div>
+          <div style="flex:1"><div class="mock-name">Umbreon ex SAR</div><div class="mock-set">SV8a · Terastal Fest</div></div>
+          <div class="mock-price">HK$9,800</div>
+          <div class="mock-trend">▲11.2%</div>
+        </div>
+      </div>
+    </div>
+    <div class="option-label">B — Blurred + Darkened<br><span style="font-size:11px;color:#475569;font-weight:400;">Soft colour wash, Pokémon not recognisable</span></div>
+  </div>
+
+  <!-- Option C: Left strip only -->
+  <div class="option" data-choice="left-strip" onclick="toggleSelect(this)">
+    <div class="preview-c">
+      <div class="strip"></div>
+      <div class="ui-block">
+        <div class="mock-header" style="font-size:14px;">Top Trending PSA 10</div>
+        <div class="mock-sub">50 cards · sorted by 30d trend</div>
+        <div class="mock-row" style="margin-right:14px;">
+          <div class="mock-img"></div>
+          <div style="flex:1"><div class="mock-name">Pikachu ex SAR</div><div class="mock-set">M2a · MEGA Dream ex</div></div>
+          <div class="mock-trend">▲18.4%</div>
+        </div>
+        <div class="mock-row" style="margin-right:14px;">
+          <div class="mock-img"></div>
+          <div style="flex:1"><div class="mock-name">Charizard Holo</div><div class="mock-set">#4/102 · Base Set</div></div>
+          <div class="mock-trend">▲14.7%</div>
+        </div>
+        <div class="mock-row" style="margin-right:14px;">
+          <div class="mock-img"></div>
+          <div style="flex:1"><div class="mock-name">Umbreon ex SAR</div><div class="mock-set">SV8a · Terastal Fest</div></div>
+          <div class="mock-trend">▲11.2%</div>
+        </div>
+      </div>
+    </div>
+    <div class="option-label">C — Side Strip<br><span style="font-size:11px;color:#475569;font-weight:400;">Image as a decorative left panel, table on clean dark bg</span></div>
+  </div>
+
+  <!-- Option D: Full bleed, page-change per route -->
+  <div class="option" data-choice="full-bleed-rotate" onclick="toggleSelect(this)">
+    <div style="position:relative;height:280px;overflow:hidden;">
+      <div style="position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;">
+        <div style="background-image:url('bg1.jpg');background-size:cover;background-position:center;filter:brightness(0.25);"></div>
+        <div style="background-image:url('bg2.jpg');background-size:cover;background-position:center;filter:brightness(0.25);"></div>
+        <div style="background-image:url('bg3.jpg');background-size:cover;background-position:center;filter:brightness(0.25);"></div>
+        <div style="background-image:url('bg4.jpg');background-size:cover;background-position:center;filter:brightness(0.25);"></div>
+      </div>
+      <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:16px;">
+        <div style="font-size:13px;font-weight:700;color:#f1f5f9;">Each page gets its own image</div>
+        <div style="font-size:11px;color:#94a3b8;text-align:center;max-width:200px;">Home → image 1 · Detail → image 2 · My Cards → image 3 · Watchlist → image 4</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;width:100%;">
+          <div style="background:rgba(15,23,42,0.8);border-radius:5px;padding:6px 8px;font-size:10px;color:#94a3b8;text-align:center;">🔴 Home<br><span style="color:#475569;">Fire/Fairy</span></div>
+          <div style="background:rgba(15,23,42,0.8);border-radius:5px;padding:6px 8px;font-size:10px;color:#94a3b8;text-align:center;">🟡 Detail<br><span style="color:#475569;">Normal/Ground</span></div>
+          <div style="background:rgba(15,23,42,0.8);border-radius:5px;padding:6px 8px;font-size:10px;color:#94a3b8;text-align:center;">🔵 My Cards<br><span style="color:#475569;">Water/Ice</span></div>
+          <div style="background:rgba(15,23,42,0.8);border-radius:5px;padding:6px 8px;font-size:10px;color:#94a3b8;text-align:center;">🟣 Watchlist<br><span style="color:#475569;">Dark/Ghost</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="option-label">D — One image per page (recommended)<br><span style="font-size:11px;color:#475569;font-weight:400;">Each page has its own Pokemon type theme, very dark overlay</span></div>
+  </div>
+
+</div>
+</body>
+</html>

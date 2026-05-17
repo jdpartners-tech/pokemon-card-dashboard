@@ -137,7 +137,17 @@ Removes a single portfolio item by its `id`.
 
 ### Theme
 
-Deep midnight background (`#0a0a1f`) with zinc-tinted row alternation. Each card row has a coloured left-border accent derived from the card's `accent_color` field (extracted from card art). Green for positive trends, red for negative.
+Deep midnight base (`#0a0a1f`). Each page has a full-bleed background image with a heavy dark overlay (`rgba(8, 12, 20, 0.85)`) so the UI remains fully readable while the Pokemon art is faintly visible.
+
+Page → background image mapping (stored in `frontend/public/backgrounds/`):
+- Home → `home.jpg` (Fire/Fairy Pokémon — red/pink palette)
+- Card Detail → `detail.jpg` (Normal/Ground Pokémon — yellow/brown palette)
+- My Cards → `my-cards.jpg` (Water/Ice Pokémon — blue palette)
+- Watchlist → `watchlist.jpg` (Dark/Ghost Pokémon — purple palette)
+
+The background is set on the `<body>` via a CSS class that changes per route using Next.js `usePathname()`. Table rows use `background: rgba(15, 23, 42, 0.75)` with `backdrop-filter: blur(4px)` so they read cleanly against the background.
+
+Each card row has a coloured left-border accent derived from the card's `accent_color` field (Pokémon type → hex colour). Green for positive trends, red for negative.
 
 ### Home Page (`/`)
 
