@@ -9,16 +9,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="en">
-      <body className="min-h-screen text-gray-100" style={{ backgroundColor: "#06080f" }}>
-        {/* Full-bleed background — Pokemon Gen 1 colour wheel, fully visible */}
+      <body className="min-h-screen text-gray-100" style={{ backgroundColor: "#06090e" }}>
         <div
           className="fixed inset-0 -z-10"
           style={{
-            backgroundImage: "url(/backgrounds/pokemon-wheel.png)",
-            backgroundSize: "contain",
+            backgroundImage: "url(/backgrounds/pokemon-wheel-cover.png)",
+            backgroundSize: "cover",
             backgroundPosition: "center center",
             backgroundRepeat: "no-repeat",
-            filter: "brightness(0.42)",
+            filter: "brightness(0.45)",
           }}
         />
 
