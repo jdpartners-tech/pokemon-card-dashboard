@@ -29,7 +29,7 @@ def test_get_or_create_card_links_ids(db):
 
 
 def test_collect_pricecharting_returns_price_dict(db):
-    scraped = [PCCard(name="Venusaur", set_name="Base Set", card_number="15/102", pricecharting_id="pc-venu", psa10_price_usd=500.0)]
+    scraped = [PCCard(name="Venusaur", set_name="Base Set", card_number="15/102", pricecharting_id="pc-venu", psa10_price_hkd=3900.0)]
     with patch("backend.scheduler.scrape_pricecharting", return_value=scraped):
         prices = _collect_pricecharting(db, fx_rate=7.8)
     db.flush()
@@ -53,7 +53,7 @@ def test_collect_snkrdunk_returns_price_dict(db):
 
 def test_run_scrape_job_merges_prices_into_single_snapshot(db):
     """Both scrapers returning the same card writes ONE new snapshot with both prices filled."""
-    pc_scraped = [PCCard(name="MergeTestCard", set_name="Test Set", card_number="1", pricecharting_id="pc-merge-test", psa10_price_usd=100.0)]
+    pc_scraped = [PCCard(name="MergeTestCard", set_name="Test Set", card_number="1", pricecharting_id="pc-merge-test", psa10_price_hkd=780.0)]
     sd_scraped = [SDCard(name="MergeTestCard", set_name="Test Set", card_number="1", snkrdunk_id="sd-merge-test", psa10_price_hkd=850.0)]
 
     with patch("backend.scheduler.SessionLocal", return_value=db), \

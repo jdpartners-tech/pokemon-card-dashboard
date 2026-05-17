@@ -92,8 +92,9 @@ def _collect_pricecharting(db, fx_rate: float) -> dict:
                 card_number=item.card_number,
                 pricecharting_id=item.pricecharting_id,
             )
-            price_hkd = round(item.psa10_price_usd * fx_rate, 2)
-            prices[card.id] = (item.psa10_price_usd, price_hkd)
+            price_hkd = item.psa10_price_hkd
+            price_usd = round(price_hkd / fx_rate, 2) if fx_rate else 0.0
+            prices[card.id] = (price_usd, price_hkd)
         except Exception as e:
             logger.warning(f"PC collect row failed ({item.name}): {e}")
 
