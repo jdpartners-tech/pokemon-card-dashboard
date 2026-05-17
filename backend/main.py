@@ -55,7 +55,7 @@ async def fix_pricecharting_prices():
     def _run():
         from backend.database import SessionLocal
         from backend.models import Card, PriceSnapshot
-        from backend.scrapers.pricecharting import fetch_product_page_price_usd
+        from backend.scrapers.pricecharting import fetch_product_page_data
         from backend.scrapers.fx import get_usd_to_hkd
         from backend.scheduler import _fix_pc_url
         import time
@@ -67,13 +67,13 @@ async def fix_pricecharting_prices():
             except Exception:
                 fx = 7.8
             cards = db.query(Card).filter(Card.pricecharting_url.isnot(None)).all()
-            logging.info(f"Fixing PC prices for {len(cards)} cards")
+            logging.info(f"Fixing PC prices + images for {len(cards)} cards")
             fixed = 0
             for card in cards:
                 url = _fix_pc_url(card.pricecharting_url)
                 if url != card.pricecharting_url:
                     card.pricecharting_url = url
-                price_usd = fetch_product_page_price_usd(url)
+                price_usd, image_url = fetch_product_page_data(url)
                 if price_usd and price_usd > 0:
                     snap = PriceSnapshot(
                         card_id=card.id,
@@ -83,6 +83,8 @@ async def fix_pricecharting_prices():
                     )
                     db.add(snap)
                     fixed += 1
+                if image_url and not card.image_url:
+                    card.image_url = image_url
                 time.sleep(0.4)
             db.commit()
             logging.info(f"PC price fix complete: {fixed} cards updated")

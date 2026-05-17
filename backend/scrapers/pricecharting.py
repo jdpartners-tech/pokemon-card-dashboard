@@ -150,36 +150,57 @@ def _parse_name(full_name: str) -> tuple[str, str]:
     return name, card_number
 
 
-def fetch_product_page_price_usd(url: str) -> float | None:
+def fetch_product_page_data(url: str) -> tuple[float | None, str | None]:
     """
-    Scrape the current PSA 10 price (USD) from a PriceCharting product page.
-    Returns None on failure or if the price element is absent.
+    Scrape a PriceCharting product page and return (price_usd, image_url).
+    price_usd  — current PSA 10 price in USD, or None
+    image_url  — card image URL from the cover div, or None
     """
     try:
         r = requests.get(url, headers=HEADERS, timeout=15)
         if r.status_code in (404, 403):
-            return None
+            return None, None
         r.raise_for_status()
         soup = BeautifulSoup(r.text, "html.parser")
 
-        # Primary selector: the main "Graded" price shown on card pages = PSA 10
+        # ── Price ────────────────────────────────────────────────────────────
+        price_usd: float | None = None
+
         el = soup.find(id="graded_price")
         if el:
             text = re.sub(r"[^0-9.]", "", el.get_text())
             if text:
-                return float(text)
+                price_usd = float(text)
 
-        # Fallback: scan price table for a row labelled "PSA 10"
-        for row in soup.find_all("tr"):
-            cells = row.find_all(["td", "th"])
-            if not cells:
-                continue
-            if re.search(r"psa\s*10|grade\s*10", cells[0].get_text(), re.I):
-                for cell in cells[1:]:
-                    raw = re.sub(r"[^0-9.]", "", cell.get_text())
-                    if raw:
-                        return float(raw)
-        return None
+        if price_usd is None:
+            for row in soup.find_all("tr"):
+                cells = row.find_all(["td", "th"])
+                if not cells:
+                    continue
+                if re.search(r"psa\s*10|grade\s*10", cells[0].get_text(), re.I):
+                    for cell in cells[1:]:
+                        raw = re.sub(r"[^0-9.]", "", cell.get_text())
+                        if raw:
+                            price_usd = float(raw)
+                            break
+                if price_usd is not None:
+                    break
+
+        # ── Image ─────────────────────────────────────────────────────────────
+        image_url: str | None = None
+        cover = soup.find("div", class_="cover")
+        if cover:
+            img = cover.find("img")
+            if img and img.get("src"):
+                image_url = img["src"]
+
+        return price_usd, image_url
     except Exception as e:
-        logger.debug(f"Product page price fetch failed ({url}): {e}")
-        return None
+        logger.debug(f"Product page fetch failed ({url}): {e}")
+        return None, None
+
+
+def fetch_product_page_price_usd(url: str) -> float | None:
+    """Thin wrapper kept for backward compatibility."""
+    price, _ = fetch_product_page_data(url)
+    return price

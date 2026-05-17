@@ -7,7 +7,7 @@ from backend.database import SessionLocal
 from backend.models import Card, PriceSnapshot
 from backend.scrapers.fx import get_usd_to_hkd
 from backend.scrapers.pokemontcg import fetch_card_image
-from backend.scrapers.pricecharting import scrape_pricecharting, fetch_product_page_price_usd
+from backend.scrapers.pricecharting import scrape_pricecharting, fetch_product_page_data
 from backend.scrapers.snkrdunk import scrape_snkrdunk
 
 logger = logging.getLogger(__name__)
@@ -141,12 +141,14 @@ def _collect_pricecharting(db, fx_rate: float) -> dict:
         if url != card.pricecharting_url:
             card.pricecharting_url = url  # heal any broken URL still in DB
         try:
-            price_usd = fetch_product_page_price_usd(url)
+            price_usd, image_url = fetch_product_page_data(url)
             if price_usd and price_usd > 0:
                 price_hkd = round(price_usd * fx_rate, 2)
                 prices[card.id] = (price_usd, price_hkd)
+            if image_url and not card.image_url:
+                card.image_url = image_url
         except Exception as e:
-            logger.warning(f"PC price page failed ({card.name}): {e}")
+            logger.warning(f"PC page fetch failed ({card.name}): {e}")
         time.sleep(0.4)  # ~2.5 req/sec — respectful of PriceCharting
 
     logger.info(f"PriceCharting: collected prices for {len(prices)} cards")

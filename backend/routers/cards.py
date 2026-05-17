@@ -80,13 +80,13 @@ def get_cards(
     for card in cards:
         metrics = _card_metrics(card.snapshots)
         trend = metrics[sort]
-        if trend is None:
-            continue
-        if positive_only and trend <= 0:
+        # positive_only: only keep cards with a confirmed upward trend
+        if positive_only and (trend is None or trend <= 0):
             continue
         results.append((card, metrics))
 
-    results.sort(key=lambda x: x[1][sort] or float("-inf"), reverse=True)
+    # null-trend cards sort to the bottom
+    results.sort(key=lambda x: x[1][sort] if x[1][sort] is not None else float("-inf"), reverse=True)
     results = results[:limit]
 
     return [_build_summary(card, metrics, watchlist_ids) for card, metrics in results]
