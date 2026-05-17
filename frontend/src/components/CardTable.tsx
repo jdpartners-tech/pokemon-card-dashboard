@@ -88,9 +88,10 @@ export default function CardTable({ cards, activeSort = "" }: Props) {
               </td>
               <td className="px-3 py-2">
                 <div className="font-semibold text-gray-100">{card.name}</div>
-                <div className="text-xs text-gray-500 mt-0.5">
-                  {card.card_number && `${card.card_number} · `}{card.set_name}
-                </div>
+                {card.card_number && (
+                  <div className="text-xs text-gray-300 mt-0.5 font-medium">#{card.card_number}</div>
+                )}
+                <div className="text-xs text-gray-400 mt-0.5">{card.set_name}</div>
                 <div className="flex items-center gap-2 mt-1">
                   {card.psa_population != null && (
                     <span className="text-[10px] bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-gray-400">

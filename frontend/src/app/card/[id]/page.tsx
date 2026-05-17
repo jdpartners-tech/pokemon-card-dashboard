@@ -108,7 +108,7 @@ export default function CardPage({ params }: { params: Promise<{ id: string }> }
       <div className="grid grid-cols-2 gap-4">
         {[
           { label: "Snkrdunk · PSA 10", value: card.snkrdunk_price_hkd, url: card.snkrdunk_url, linkLabel: "View on Snkrdunk ↗" },
-          { label: "PriceCharting · PSA 10", value: card.pricecharting_price_hkd, url: card.pricecharting_url, linkLabel: "View on PriceCharting ↗" },
+          { label: "PriceCharting · PSA 10", value: card.pricecharting_price_hkd, url: card.pricecharting_url ?? `https://www.pricecharting.com/search-products?q=${encodeURIComponent(card.name)}&type=prices`, linkLabel: "View on PriceCharting ↗" },
         ].map(({ label, value, url, linkLabel }) => (
           <div key={label} className="rounded-lg border border-white/10 p-4"
                style={{ background: "rgba(15, 23, 42, 0.75)", backdropFilter: "blur(4px)" }}>
