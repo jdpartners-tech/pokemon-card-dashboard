@@ -1,24 +1,19 @@
+# backend/routers/cards.py
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 from backend.database import get_db
 from backend.models import Card, PriceSnapshot, WatchlistItem
 from backend.schemas import CardSummary, CardDetail, SnapshotPoint
-from backend.scoring import calculate_trend_vs_days_ago
+from backend.scoring import (
+    calculate_trend_vs_days_ago, calculate_ath,
+    calculate_pct_from_ath, calculate_trend_consistency,
+)
 
 router = APIRouter(prefix="/cards", tags=["cards"])
 
 
-def _snap_in_window(snap, cutoff) -> bool:
-    from datetime import timezone
-    dt = snap.scraped_at
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return dt >= cutoff
-
-
 def _latest_price(snaps, field: str):
-    """Return the value of `field` from the most recent snapshot that has it."""
     for snap in sorted(snaps, key=lambda s: s.scraped_at, reverse=True):
         val = getattr(snap, field)
         if val:
@@ -26,46 +21,54 @@ def _latest_price(snaps, field: str):
     return None
 
 
-def _card_trends(snapshots):
+def _card_metrics(snapshots: list) -> dict:
+    ath, ath_date = calculate_ath(snapshots)
     return {
-        "trend_7d":  calculate_trend_vs_days_ago(snapshots, 7),
-        "trend_30d": calculate_trend_vs_days_ago(snapshots, 30),
-        "trend_90d": calculate_trend_vs_days_ago(snapshots, 90),
+        "trend_7d":          calculate_trend_vs_days_ago(snapshots, 7),
+        "trend_30d":         calculate_trend_vs_days_ago(snapshots, 30),
+        "trend_90d":         calculate_trend_vs_days_ago(snapshots, 90),
+        "trend_1y":          calculate_trend_vs_days_ago(snapshots, 365),
+        "pct_from_ath":      calculate_pct_from_ath(snapshots),
+        "trend_consistency": calculate_trend_consistency(snapshots),
+        "ath":               ath,
+        "ath_date":          ath_date,
     }
 
 
-def _build_summary(card: Card, trends: dict, watchlist_ids: set) -> CardSummary:
+def _build_summary(card: Card, metrics: dict, watchlist_ids: set) -> CardSummary:
     snaps = card.snapshots
     return CardSummary(
         id=card.id,
         name=card.name,
         set_name=card.set_name,
         card_number=card.card_number,
-        image_url=getattr(card, "image_url", None),
-        accent_color=getattr(card, "accent_color", None),
+        image_url=card.image_url,
+        accent_color=card.accent_color,
         snkrdunk_price_hkd=_latest_price(snaps, "snkrdunk_price_hkd"),
         pricecharting_price_hkd=_latest_price(snaps, "pricecharting_price_hkd"),
-        psa_population=getattr(card, "psa_population", None),
-        trend_7d=trends["trend_7d"],
-        trend_30d=trends["trend_30d"],
-        trend_90d=trends["trend_90d"],
-        trend_1y=trends.get("trend_1y"),
-        pct_from_ath=None,
-        trend_consistency=0,
+        psa_population=card.psa_population,
+        trend_7d=metrics["trend_7d"],
+        trend_30d=metrics["trend_30d"],
+        trend_90d=metrics["trend_90d"],
+        trend_1y=metrics["trend_1y"],
+        pct_from_ath=metrics["pct_from_ath"],
+        trend_consistency=metrics["trend_consistency"],
         in_watchlist=card.id in watchlist_ids,
     )
 
 
 @router.get("", response_model=list[CardSummary])
 def get_cards(
-    set: Optional[str] = Query(None),
-    trending_up: Optional[bool] = Query(None),
+    sort: str = Query("trend_30d"),
     search: Optional[str] = Query(None),
+    limit: int = Query(50),
     db: Session = Depends(get_db),
 ):
+    valid_sorts = {"trend_7d", "trend_30d", "trend_90d", "trend_1y"}
+    if sort not in valid_sorts:
+        sort = "trend_30d"
+
     query = db.query(Card)
-    if set:
-        query = query.filter(Card.set_name.ilike(f"%{set}%"))
     if search:
         query = query.filter(Card.name.ilike(f"%{search}%"))
     cards = query.all()
@@ -74,15 +77,16 @@ def get_cards(
 
     results = []
     for card in cards:
-        trends = _card_trends(card.snapshots)
-        if trending_up and not (trends["trend_7d"] and trends["trend_7d"] > 0):
-            continue
-        results.append((card, trends))
+        metrics = _card_metrics(card.snapshots)
+        trend = metrics[sort]
+        if trend is None or trend <= 0:
+            continue  # only show upward-trending cards on home page
+        results.append((card, metrics))
 
-    # Sort by 7d trend descending (nulls last)
-    results.sort(key=lambda x: x[1]["trend_7d"] or float("-inf"), reverse=True)
+    results.sort(key=lambda x: x[1][sort] or float("-inf"), reverse=True)
+    results = results[:limit]
 
-    return [_build_summary(card, trends, watchlist_ids) for card, trends in results]
+    return [_build_summary(card, metrics, watchlist_ids) for card, metrics in results]
 
 
 @router.get("/{card_id}", response_model=CardDetail)
@@ -97,7 +101,7 @@ def get_card(card_id: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Card not found")
 
     watchlist_ids = {w.card_id for w in db.query(WatchlistItem).all()}
-    trends = _card_trends(card.snapshots)
+    metrics = _card_metrics(card.snapshots)
 
     history = [
         SnapshotPoint(
@@ -109,26 +113,11 @@ def get_card(card_id: str, db: Session = Depends(get_db)):
     ]
 
     return CardDetail(
-        id=card.id,
-        name=card.name,
-        set_name=card.set_name,
-        card_number=card.card_number,
-        image_url=getattr(card, "image_url", None),
-        accent_color=getattr(card, "accent_color", None),
-        snkrdunk_price_hkd=_latest_price(card.snapshots, "snkrdunk_price_hkd"),
-        pricecharting_price_hkd=_latest_price(card.snapshots, "pricecharting_price_hkd"),
-        psa_population=getattr(card, "psa_population", None),
-        trend_7d=trends["trend_7d"],
-        trend_30d=trends["trend_30d"],
-        trend_90d=trends["trend_90d"],
-        trend_1y=trends.get("trend_1y"),
-        pct_from_ath=None,
-        trend_consistency=0,
-        in_watchlist=card.id in watchlist_ids,
-        snkrdunk_url=getattr(card, "snkrdunk_url", None),
-        pricecharting_url=getattr(card, "pricecharting_url", None),
-        sales_per_day=None,
-        ath=None,
-        ath_date=None,
+        **_build_summary(card, metrics, watchlist_ids).model_dump(),
+        snkrdunk_url=card.snkrdunk_url,
+        pricecharting_url=card.pricecharting_url,
+        sales_per_day=float(card.sales_per_day) if card.sales_per_day else None,
+        ath=metrics["ath"],
+        ath_date=metrics["ath_date"],
         history=history,
     )
