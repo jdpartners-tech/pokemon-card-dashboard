@@ -77,3 +77,16 @@ def test_run_scrape_job_handles_fx_failure(db):
          patch("backend.scheduler.scrape_pricecharting") as mock_pc:
         run_scrape_job()
         mock_pc.assert_not_called()
+
+
+def test_get_or_create_card_fetches_image_for_new_card(db):
+    from backend.scheduler import _get_or_create_card
+    with patch("backend.scheduler.fetch_card_image", return_value=("http://img.png", "#ef4444")) as mock_img:
+        card = _get_or_create_card(
+            db, name="TestImageCard", set_name="Base Set",
+            card_number="99", pricecharting_id="img-test-999",
+        )
+        db.commit()
+    assert card.image_url == "http://img.png"
+    assert card.accent_color == "#ef4444"
+    mock_img.assert_called_once()
