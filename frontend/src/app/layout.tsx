@@ -14,11 +14,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div
           className="fixed inset-0 -z-10"
           style={{
-            backgroundImage: "url(/backgrounds/pokemon-wheel.webp)",
+            backgroundImage: "url(/backgrounds/pokemon-wheel.png)",
             backgroundSize: "contain",
             backgroundPosition: "center center",
             backgroundRepeat: "no-repeat",
-            filter: "brightness(0.28)",
+            filter: "brightness(0.45)",
           }}
         />
 
