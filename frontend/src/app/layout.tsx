@@ -9,7 +9,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="en">
-      <body className="min-h-screen text-gray-100" style={{ backgroundColor: "#ffffff" }}>
+      <body className="min-h-screen text-gray-100" style={{ backgroundColor: "#080c14" }}>
         {/* Full-bleed background — Pokemon Gen 1 colour wheel, fully visible */}
         <div
           className="fixed inset-0 -z-10"
@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             backgroundSize: "contain",
             backgroundPosition: "center center",
             backgroundRepeat: "no-repeat",
-            filter: "brightness(0.55)",
+            filter: "brightness(0.28)",
           }}
         />
 
