@@ -47,6 +47,15 @@ export default function CardPage({ params }: { params: Promise<{ id: string }> }
     return diff <= rangeDays;
   });
 
+  function buildPcUrl(name: string, cardNumber: string | null, setName: string): string {
+    const slugify = (s: string) =>
+      s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    const setSlug = "pokemon-" + slugify(setName);
+    const num = cardNumber ? cardNumber.split("/")[0] : "";
+    const cardSlug = num ? `${slugify(name)}-${num}` : slugify(name);
+    return `https://www.pricecharting.com/game/${setSlug}/${cardSlug}`;
+  }
+
   return (
     <div className="space-y-5 max-w-4xl">
       <Link href="/" className="text-sm text-gray-500 hover:text-gray-300">← Back to Top 50</Link>
@@ -108,7 +117,7 @@ export default function CardPage({ params }: { params: Promise<{ id: string }> }
       <div className="grid grid-cols-2 gap-4">
         {[
           { label: "Snkrdunk · PSA 10", value: card.snkrdunk_price_hkd, url: card.snkrdunk_url, linkLabel: "View on Snkrdunk ↗" },
-          { label: "PriceCharting · PSA 10", value: card.pricecharting_price_hkd, url: card.pricecharting_url ?? `https://www.pricecharting.com/search-products?q=${encodeURIComponent(card.name)}&type=prices`, linkLabel: "View on PriceCharting ↗" },
+          { label: "PriceCharting · PSA 10", value: card.pricecharting_price_hkd, url: card.pricecharting_url ?? buildPcUrl(card.name, card.card_number, card.set_name), linkLabel: "View on PriceCharting ↗" },
         ].map(({ label, value, url, linkLabel }) => (
           <div key={label} className="rounded-lg border border-white/10 p-4"
                style={{ background: "rgba(15, 23, 42, 0.75)", backdropFilter: "blur(4px)" }}>
