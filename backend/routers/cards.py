@@ -62,6 +62,7 @@ def get_cards(
     sort: str = Query("trend_30d"),
     search: Optional[str] = Query(None),
     limit: int = Query(50),
+    positive_only: bool = Query(False),
     db: Session = Depends(get_db),
 ):
     valid_sorts = {"trend_7d", "trend_30d", "trend_90d", "trend_1y"}
@@ -78,7 +79,10 @@ def get_cards(
     results = []
     for card in cards:
         metrics = _card_metrics(card.snapshots)
-        if metrics[sort] is None:
+        trend = metrics[sort]
+        if trend is None:
+            continue
+        if positive_only and trend <= 0:
             continue
         results.append((card, metrics))
 

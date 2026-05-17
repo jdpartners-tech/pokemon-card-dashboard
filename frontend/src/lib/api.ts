@@ -8,6 +8,7 @@ export interface CardFilters {
   search?: string;
   sort?: "trend_7d" | "trend_30d" | "trend_90d" | "trend_1y";
   limit?: number;
+  positive_only?: boolean;
 }
 
 export function cardsUrl(f: CardFilters = {}): string {
@@ -15,6 +16,7 @@ export function cardsUrl(f: CardFilters = {}): string {
   if (f.search) p.set("search", f.search);
   if (f.sort) p.set("sort", f.sort);
   if (f.limit) p.set("limit", String(f.limit));
+  if (f.positive_only) p.set("positive_only", "true");
   return `${BASE}/cards?${p}`;
 }
 

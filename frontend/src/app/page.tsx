@@ -20,7 +20,7 @@ export default function HomePage() {
             {data ? `Top ${data.length}` : "Loading…"} · sorted by {filters.sort ?? "30d"} trend
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <input
             type="text"
             placeholder="Search cards…"
@@ -37,6 +37,15 @@ export default function HomePage() {
             <option value="trend_90d">Sort: 90d</option>
             <option value="trend_1y">Sort: 1y</option>
           </select>
+          <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-400 hover:text-gray-200 transition-colors">
+            <input
+              type="checkbox"
+              checked={!!filters.positive_only}
+              onChange={(e) => setFilters((f) => ({ ...f, positive_only: e.target.checked || undefined }))}
+              className="accent-green-400 w-3.5 h-3.5"
+            />
+            Trending ↑ only
+          </label>
         </div>
       </div>
 
