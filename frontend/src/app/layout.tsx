@@ -3,6 +3,7 @@
 import "./globals.css";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import SearchBar from "@/components/SearchBar";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -46,6 +47,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                   {label}
                 </Link>
               ))}
+            </div>
+            <div className="ml-auto">
+              <SearchBar />
             </div>
           </div>
         </nav>
