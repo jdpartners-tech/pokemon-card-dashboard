@@ -47,6 +47,55 @@ async def trigger_scrape():
     return {"ok": True, "message": "Scrape job started in background"}
 
 
+@app.post("/admin/fix-pc-prices", tags=["admin"])
+async def fix_pricecharting_prices():
+    """Re-scrape current PSA 10 prices from PriceCharting product pages for all cards."""
+    import threading
+
+    def _run():
+        from backend.database import SessionLocal
+        from backend.models import Card, PriceSnapshot
+        from backend.scrapers.pricecharting import fetch_product_page_price_usd
+        from backend.scrapers.fx import get_usd_to_hkd
+        from backend.scheduler import _fix_pc_url
+        import time
+        from decimal import Decimal
+        db = SessionLocal()
+        try:
+            try:
+                fx = get_usd_to_hkd()
+            except Exception:
+                fx = 7.8
+            cards = db.query(Card).filter(Card.pricecharting_url.isnot(None)).all()
+            logging.info(f"Fixing PC prices for {len(cards)} cards")
+            fixed = 0
+            for card in cards:
+                url = _fix_pc_url(card.pricecharting_url)
+                if url != card.pricecharting_url:
+                    card.pricecharting_url = url
+                price_usd = fetch_product_page_price_usd(url)
+                if price_usd and price_usd > 0:
+                    snap = PriceSnapshot(
+                        card_id=card.id,
+                        pricecharting_price_usd=Decimal(str(round(price_usd, 2))),
+                        pricecharting_price_hkd=Decimal(str(round(price_usd * fx, 2))),
+                        usd_to_hkd_rate=Decimal(str(round(fx, 4))),
+                    )
+                    db.add(snap)
+                    fixed += 1
+                time.sleep(0.4)
+            db.commit()
+            logging.info(f"PC price fix complete: {fixed} cards updated")
+        except Exception as e:
+            db.rollback()
+            logging.error(f"PC price fix failed: {e}")
+        finally:
+            db.close()
+
+    threading.Thread(target=_run, daemon=True).start()
+    return {"ok": True, "message": "PriceCharting price fix started — scrapes product pages for all cards"}
+
+
 @app.post("/admin/backfill-images", tags=["admin"])
 async def backfill_images():
     """Fetch image_url and accent_color from pokemontcg.io for all cards missing them."""

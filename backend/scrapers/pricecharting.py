@@ -102,18 +102,23 @@ def _parse_product(item: dict, set_id: str) -> ScrapedCard | None:
         set_name = item.get("console-name") or set_id.replace("-", " ").title()
         product_id = str(item.get("id") or "")
 
-        price_hkd = item.get("grade-10-hkd") or item.get("psa-10-price-hkd")
-        if not price_hkd:
-            price_cents = item.get("grade-10") or item.get("psa-10-price") or 0
-            if not price_cents:
-                return None
-            price_hkd = price_cents / 100.0 * 7.8
-
         if not name or not product_id:
             return None
 
+        # Check that this card has ANY graded price (used only for discovery, not stored)
+        has_price = bool(
+            item.get("grade-10-hkd") or item.get("psa-10-price-hkd") or
+            item.get("grade-10") or item.get("psa-10-price")
+        )
+        if not has_price:
+            return None
+
         name_clean, card_number = _parse_name(name)
-        pc_url = f"https://www.pricecharting.com/game/{set_id}/{name_clean.lower().replace(' ', '-')}-{card_number}"
+        # Use only the number before "/" so "7/64" → "7" in the URL slug
+        num_slug = card_number.split("/")[0] if card_number else ""
+        name_slug = re.sub(r"[^a-z0-9]+", "-", name_clean.lower()).strip("-")
+        slug = f"{name_slug}-{num_slug}" if num_slug else name_slug
+        pc_url = f"https://www.pricecharting.com/game/{set_id}/{slug}"
 
         sales_per_day = None
         raw_sales = item.get("sales-volume") or item.get("volume")
@@ -128,9 +133,9 @@ def _parse_product(item: dict, set_id: str) -> ScrapedCard | None:
             set_name=set_name,
             card_number=card_number,
             pricecharting_id=product_id,
-            psa10_price_hkd=float(price_hkd),
+            psa10_price_hkd=0.0,  # price is fetched separately from product pages
             pricecharting_url=pc_url,
-            psa_population=None,  # populated separately by backfill
+            psa_population=None,
             sales_per_day=sales_per_day,
         )
     except Exception as e:
@@ -143,3 +148,38 @@ def _parse_name(full_name: str) -> tuple[str, str]:
     card_number = num_match.group(1) if num_match else ""
     name = re.sub(r"#\S+", "", full_name).strip()
     return name, card_number
+
+
+def fetch_product_page_price_usd(url: str) -> float | None:
+    """
+    Scrape the current PSA 10 price (USD) from a PriceCharting product page.
+    Returns None on failure or if the price element is absent.
+    """
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=15)
+        if r.status_code in (404, 403):
+            return None
+        r.raise_for_status()
+        soup = BeautifulSoup(r.text, "html.parser")
+
+        # Primary selector: the main "Graded" price shown on card pages = PSA 10
+        el = soup.find(id="graded_price")
+        if el:
+            text = re.sub(r"[^0-9.]", "", el.get_text())
+            if text:
+                return float(text)
+
+        # Fallback: scan price table for a row labelled "PSA 10"
+        for row in soup.find_all("tr"):
+            cells = row.find_all(["td", "th"])
+            if not cells:
+                continue
+            if re.search(r"psa\s*10|grade\s*10", cells[0].get_text(), re.I):
+                for cell in cells[1:]:
+                    raw = re.sub(r"[^0-9.]", "", cell.get_text())
+                    if raw:
+                        return float(raw)
+        return None
+    except Exception as e:
+        logger.debug(f"Product page price fetch failed ({url}): {e}")
+        return None

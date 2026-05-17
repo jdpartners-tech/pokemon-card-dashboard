@@ -1,11 +1,13 @@
 import logging
+import re
+import time
 from decimal import Decimal
 from apscheduler.schedulers.background import BackgroundScheduler
 from backend.database import SessionLocal
 from backend.models import Card, PriceSnapshot
 from backend.scrapers.fx import get_usd_to_hkd
 from backend.scrapers.pokemontcg import fetch_card_image
-from backend.scrapers.pricecharting import scrape_pricecharting
+from backend.scrapers.pricecharting import scrape_pricecharting, fetch_product_page_price_usd
 from backend.scrapers.snkrdunk import scrape_snkrdunk
 
 logger = logging.getLogger(__name__)
@@ -82,15 +84,33 @@ def _get_or_create_card(db, *, name, set_name, card_number, pricecharting_id=Non
     return card
 
 
+def _fix_pc_url(url: str) -> str:
+    """Correct a broken PriceCharting URL like '/ho-oh-7/64' → '/ho-oh-7'."""
+    # The path looks like /game/pokemon-set/card-slug where slug must not contain "/"
+    parts = url.split("/game/", 1)
+    if len(parts) != 2:
+        return url
+    base, rest = parts
+    segments = rest.split("/")
+    if len(segments) >= 2:
+        # segments[0] = set slug, segments[1] = card slug, segments[2+] = broken fraction
+        segments = segments[:2]
+    return f"{base}/game/{'/'.join(segments)}"
+
+
 def _collect_pricecharting(db, fx_rate: float) -> dict:
-    """Scrape PriceCharting and return {card.id: (price_usd, price_hkd)}."""
+    """
+    1. Use PriceCharting bulk API to discover cards and update metadata.
+    2. Scrape current PSA 10 price from each card's product page (accurate).
+    Returns {card.id: (price_usd, price_hkd)}.
+    """
     try:
         scraped = scrape_pricecharting()
     except Exception as e:
         logger.error(f"PriceCharting scrape failed: {e}")
         return {}
 
-    prices = {}
+    # Pass 1: upsert card metadata from API discovery
     for item in scraped:
         try:
             card = _get_or_create_card(
@@ -100,19 +120,36 @@ def _collect_pricecharting(db, fx_rate: float) -> dict:
                 card_number=item.card_number,
                 pricecharting_id=item.pricecharting_id,
             )
-            if item.pricecharting_url and not card.pricecharting_url:
-                card.pricecharting_url = item.pricecharting_url
+            if item.pricecharting_url:
+                card.pricecharting_url = item.pricecharting_url  # always overwrite to fix old broken URLs
             if item.psa_population is not None:
                 card.psa_population = item.psa_population
             if item.sales_per_day is not None:
                 card.sales_per_day = float(item.sales_per_day)
-            price_hkd = item.psa10_price_hkd
-            price_usd = round(price_hkd / fx_rate, 2) if fx_rate else 0.0
-            prices[card.id] = (price_usd, price_hkd)
         except Exception as e:
-            logger.warning(f"PC collect row failed ({item.name}): {e}")
+            logger.warning(f"PC card upsert failed ({item.name}): {e}")
 
-    logger.info(f"PriceCharting: collected {len(prices)} cards")
+    db.flush()
+
+    # Pass 2: scrape actual current prices from product pages
+    prices = {}
+    cards_with_url = db.query(Card).filter(Card.pricecharting_url.isnot(None)).all()
+    logger.info(f"PriceCharting: fetching live prices for {len(cards_with_url)} product pages")
+
+    for card in cards_with_url:
+        url = _fix_pc_url(card.pricecharting_url)
+        if url != card.pricecharting_url:
+            card.pricecharting_url = url  # heal any broken URL still in DB
+        try:
+            price_usd = fetch_product_page_price_usd(url)
+            if price_usd and price_usd > 0:
+                price_hkd = round(price_usd * fx_rate, 2)
+                prices[card.id] = (price_usd, price_hkd)
+        except Exception as e:
+            logger.warning(f"PC price page failed ({card.name}): {e}")
+        time.sleep(0.4)  # ~2.5 req/sec — respectful of PriceCharting
+
+    logger.info(f"PriceCharting: collected prices for {len(prices)} cards")
     return prices
 
 
