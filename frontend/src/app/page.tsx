@@ -17,7 +17,7 @@ export default function HomePage() {
         <div>
           <h1 className="text-xl font-bold text-gray-100">Top Trending PSA 10 Cards</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {data ? `${data.length} cards` : "Loading…"} · sorted by {filters.sort ?? "30d"} trend
+            {data ? `Top ${data.length}` : "Loading…"} · sorted by {filters.sort ?? "30d"} trend
           </p>
         </div>
         <div className="flex items-center gap-3">

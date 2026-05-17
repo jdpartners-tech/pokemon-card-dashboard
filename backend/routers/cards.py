@@ -78,9 +78,8 @@ def get_cards(
     results = []
     for card in cards:
         metrics = _card_metrics(card.snapshots)
-        trend = metrics[sort]
-        if trend is None or trend <= 0:
-            continue  # only show upward-trending cards on home page
+        if metrics[sort] is None:
+            continue
         results.append((card, metrics))
 
     results.sort(key=lambda x: x[1][sort] or float("-inf"), reverse=True)
