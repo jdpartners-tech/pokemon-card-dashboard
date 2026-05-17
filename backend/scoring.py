@@ -1,3 +1,4 @@
+# backend/scoring.py
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -9,43 +10,75 @@ def _aware_dt(dt: datetime) -> datetime:
 
 
 def _get_price(snap) -> Optional[float]:
-    """Return the best available price from a snapshot (prefer snkrdunk, fall back to pricecharting)."""
-    if snap.snkrdunk_price_hkd:
-        return float(snap.snkrdunk_price_hkd)
     if snap.pricecharting_price_hkd:
         return float(snap.pricecharting_price_hkd)
+    if snap.snkrdunk_price_hkd:
+        return float(snap.snkrdunk_price_hkd)
     return None
 
 
 def calculate_trend_vs_days_ago(snapshots, days: int) -> Optional[float]:
-    """
-    % change: latest price vs the most recent snapshot that is at least `days` old.
-    Works well with monthly data — finds the closest available historical point.
-    """
     if not snapshots:
         return None
-
     sorted_snaps = sorted(snapshots, key=lambda s: _aware_dt(s.scraped_at), reverse=True)
-    latest = sorted_snaps[0]
-    latest_price = _get_price(latest)
+    latest_price = _get_price(sorted_snaps[0])
     if not latest_price:
         return None
-
-    latest_dt = _aware_dt(latest.scraped_at)
+    latest_dt = _aware_dt(sorted_snaps[0].scraped_at)
     cutoff = latest_dt - timedelta(days=days)
-
-    # snapshots strictly older than `days` ago
     old_snaps = [s for s in snapshots if _aware_dt(s.scraped_at) <= cutoff]
     if not old_snaps:
         return None
-
-    # Pick the most recent one (closest to `days` ago)
     old_snap = max(old_snaps, key=lambda s: _aware_dt(s.scraped_at))
     old_price = _get_price(old_snap)
     if not old_price or old_price == 0:
         return None
-
     return round((latest_price - old_price) / old_price * 100, 2)
+
+
+def calculate_ath(snapshots) -> tuple[Optional[float], Optional[datetime]]:
+    """Return (all-time-high price, date of that high)."""
+    if not snapshots:
+        return None, None
+    best = max(snapshots, key=lambda s: _get_price(s) or 0)
+    price = _get_price(best)
+    if not price:
+        return None, None
+    return price, _aware_dt(best.scraped_at)
+
+
+def calculate_pct_from_ath(snapshots) -> Optional[float]:
+    """% difference between current price and all-time high. Negative = below ATH."""
+    if not snapshots:
+        return None
+    sorted_snaps = sorted(snapshots, key=lambda s: _aware_dt(s.scraped_at), reverse=True)
+    current = _get_price(sorted_snaps[0])
+    if not current:
+        return None
+    ath, _ = calculate_ath(snapshots)
+    if not ath or ath == 0:
+        return None
+    return round((current - ath) / ath * 100, 2)
+
+
+def calculate_trend_consistency(snapshots) -> int:
+    """Count of weeks (out of last 4) where price rose. Returns 0-4."""
+    if not snapshots:
+        return 0
+    now = datetime.now(timezone.utc)
+    count = 0
+    for week in range(1, 5):
+        end_dt = now - timedelta(weeks=week - 1)
+        start_dt = now - timedelta(weeks=week)
+        end_snaps = [s for s in snapshots if _aware_dt(s.scraped_at) <= end_dt]
+        start_snaps = [s for s in snapshots if _aware_dt(s.scraped_at) <= start_dt]
+        if not end_snaps or not start_snaps:
+            continue
+        end_price = _get_price(max(end_snaps, key=lambda s: _aware_dt(s.scraped_at)))
+        start_price = _get_price(max(start_snaps, key=lambda s: _aware_dt(s.scraped_at)))
+        if end_price and start_price and end_price > start_price:
+            count += 1
+    return count
 
 
 def calculate_arbitrage(snapshots) -> Optional[float]:

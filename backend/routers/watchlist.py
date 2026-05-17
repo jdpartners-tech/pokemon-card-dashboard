@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend.models import Card, WatchlistItem
 from backend.schemas import CardSummary, WatchlistAdd
-from backend.routers.cards import _build_summary, _card_trends
+from backend.routers.cards import _build_summary, _card_metrics
 
 router = APIRouter(prefix="/watchlist", tags=["watchlist"])
 
@@ -16,11 +16,11 @@ def get_watchlist(db: Session = Depends(get_db)):
 
     results = []
     for card in cards:
-        trends = _card_trends(card.snapshots)
-        results.append((card, trends))
+        metrics = _card_metrics(card.snapshots)
+        results.append((card, metrics))
 
     results.sort(key=lambda x: x[1]["trend_7d"] or float("-inf"), reverse=True)
-    return [_build_summary(card, trends, watchlist_ids) for card, trends in results]
+    return [_build_summary(card, metrics, watchlist_ids) for card, metrics in results]
 
 
 @router.post("", response_model=dict)

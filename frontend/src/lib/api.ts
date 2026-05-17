@@ -1,54 +1,59 @@
-import type { CardSummary, CardDetail } from "./types";
+// frontend/src/lib/api.ts
+import type { CardSummary, CardDetail, PortfolioSummary } from "./types";
 
-const BASE = "/api";
-
-async function json<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json() as Promise<T>;
-}
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 export interface CardFilters {
   search?: string;
-  set?: string;
-  trending_up?: boolean;
+  sort?: "trend_7d" | "trend_30d" | "trend_90d" | "trend_1y";
+  limit?: number;
 }
 
-export function cardsUrl(filters: CardFilters): string {
-  const params = new URLSearchParams();
-  if (filters.search) params.set("search", filters.search);
-  if (filters.set) params.set("set", filters.set);
-  if (filters.trending_up) params.set("trending_up", "true");
-  const qs = params.toString();
-  return `${BASE}/cards${qs ? `?${qs}` : ""}`;
+export function cardsUrl(f: CardFilters = {}): string {
+  const p = new URLSearchParams();
+  if (f.search) p.set("search", f.search);
+  if (f.sort) p.set("sort", f.sort);
+  if (f.limit) p.set("limit", String(f.limit));
+  return `${BASE}/cards?${p}`;
 }
 
-export const fetchCards = (url: string) => json<CardSummary[]>(url);
-export const fetchWatchlist = () => json<CardSummary[]>(`${BASE}/watchlist`);
-export const fetchCard = (id: string) => json<CardDetail>(`${BASE}/cards/${id}`);
+export const fetchCards = (url: string): Promise<CardSummary[]> => fetcher(url);
+export const fetchCard = (id: string): Promise<CardDetail> =>
+  fetcher(`${BASE}/cards/${id}`);
+export const fetchPortfolio = (): Promise<PortfolioSummary> =>
+  fetcher(`${BASE}/portfolio`);
 
-export async function addToWatchlist(cardId: string): Promise<void> {
-  await json(`${BASE}/watchlist`, {
+export async function addPortfolioItem(body: {
+  card_id: string;
+  purchase_price_hkd: number;
+  purchased_at: string;
+}): Promise<{ ok: boolean; id: string }> {
+  const r = await fetch(`${BASE}/portfolio`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ card_id: cardId }),
+    body: JSON.stringify(body),
   });
+  return r.json();
 }
 
-export async function removeFromWatchlist(cardId: string): Promise<void> {
-  await json(`${BASE}/watchlist/${cardId}`, { method: "DELETE" });
+export async function deletePortfolioItem(id: string): Promise<void> {
+  await fetch(`${BASE}/portfolio/${id}`, { method: "DELETE" });
 }
 
-export async function triggerScrape(): Promise<void> {
-  await json(`${BASE}/admin/scrape`, { method: "POST" });
+export async function toggleWatchlist(
+  cardId: string, inWatchlist: boolean
+): Promise<void> {
+  if (inWatchlist) {
+    await fetch(`${BASE}/watchlist/${cardId}`, { method: "DELETE" });
+  } else {
+    await fetch(`${BASE}/watchlist`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ card_id: cardId }),
+    });
+  }
 }
 
-export async function triggerBackfill(): Promise<void> {
-  await json(`${BASE}/admin/backfill`, { method: "POST" });
-}
-
-export async function triggerSnkrdunkBackfill(): Promise<void> {
-  await json(`${BASE}/admin/backfill/snkrdunk`, { method: "POST" });
-}
-
-export const reportUrl = `${BASE}/report`;
+export const fetchWatchlist = (): Promise<CardSummary[]> =>
+  fetcher(`${BASE}/watchlist`);

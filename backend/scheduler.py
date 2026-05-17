@@ -4,6 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from backend.database import SessionLocal
 from backend.models import Card, PriceSnapshot
 from backend.scrapers.fx import get_usd_to_hkd
+from backend.scrapers.pokemontcg import fetch_card_image
 from backend.scrapers.pricecharting import scrape_pricecharting
 from backend.scrapers.snkrdunk import scrape_snkrdunk
 
@@ -71,6 +72,13 @@ def _get_or_create_card(db, *, name, set_name, card_number, pricecharting_id=Non
     )
     db.add(card)
     db.flush()
+    # Fetch image + accent colour from pokemontcg.io (best-effort)
+    try:
+        image_url, accent_color = fetch_card_image(name, card_number)
+        card.image_url = image_url
+        card.accent_color = accent_color
+    except Exception as e:
+        logger.warning(f"Image fetch failed for {name!r}: {e}")
     return card
 
 
@@ -92,8 +100,15 @@ def _collect_pricecharting(db, fx_rate: float) -> dict:
                 card_number=item.card_number,
                 pricecharting_id=item.pricecharting_id,
             )
-            price_hkd = round(item.psa10_price_usd * fx_rate, 2)
-            prices[card.id] = (item.psa10_price_usd, price_hkd)
+            if item.pricecharting_url and not card.pricecharting_url:
+                card.pricecharting_url = item.pricecharting_url
+            if item.psa_population is not None:
+                card.psa_population = item.psa_population
+            if item.sales_per_day is not None:
+                card.sales_per_day = float(item.sales_per_day)
+            price_hkd = item.psa10_price_hkd
+            price_usd = round(price_hkd / fx_rate, 2) if fx_rate else 0.0
+            prices[card.id] = (price_usd, price_hkd)
         except Exception as e:
             logger.warning(f"PC collect row failed ({item.name}): {e}")
 

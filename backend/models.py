@@ -1,5 +1,6 @@
+# backend/models.py
 import uuid
-from sqlalchemy import Column, String, Numeric, DateTime, ForeignKey, func
+from sqlalchemy import Column, String, Numeric, DateTime, Integer, Date, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from backend.database import Base
@@ -14,17 +15,30 @@ class Card(Base):
     card_number = Column(String)
     snkrdunk_id = Column(String, unique=True)
     pricecharting_id = Column(String, unique=True)
+    image_url = Column(String)
+    accent_color = Column(String)
+    snkrdunk_url = Column(String)
+    pricecharting_url = Column(String)
+    psa_population = Column(Integer)
+    sales_per_day = Column(Numeric(8, 2))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    snapshots = relationship("PriceSnapshot", back_populates="card", order_by="PriceSnapshot.scraped_at", cascade="all, delete-orphan", passive_deletes=True)
-    watchlist_entry = relationship("WatchlistItem", back_populates="card", uselist=False, cascade="all, delete-orphan", passive_deletes=True)
+    snapshots = relationship("PriceSnapshot", back_populates="card",
+                             order_by="PriceSnapshot.scraped_at",
+                             cascade="all, delete-orphan", passive_deletes=True)
+    watchlist_entry = relationship("WatchlistItem", back_populates="card",
+                                   uselist=False, cascade="all, delete-orphan",
+                                   passive_deletes=True)
+    portfolio_items = relationship("PortfolioItem", back_populates="card",
+                                   cascade="all, delete-orphan", passive_deletes=True)
 
 
 class PriceSnapshot(Base):
     __tablename__ = "price_snapshots"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    card_id = Column(UUID(as_uuid=True), ForeignKey("cards.id", ondelete="CASCADE"), nullable=False)
+    card_id = Column(UUID(as_uuid=True), ForeignKey("cards.id", ondelete="CASCADE"),
+                     nullable=False)
     snkrdunk_price_hkd = Column(Numeric(12, 2))
     pricecharting_price_usd = Column(Numeric(12, 2))
     pricecharting_price_hkd = Column(Numeric(12, 2))
@@ -38,7 +52,21 @@ class WatchlistItem(Base):
     __tablename__ = "watchlist"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    card_id = Column(UUID(as_uuid=True), ForeignKey("cards.id", ondelete="CASCADE"), nullable=False, unique=True)
+    card_id = Column(UUID(as_uuid=True), ForeignKey("cards.id", ondelete="CASCADE"),
+                     nullable=False, unique=True)
     added_at = Column(DateTime(timezone=True), server_default=func.now())
 
     card = relationship("Card", back_populates="watchlist_entry")
+
+
+class PortfolioItem(Base):
+    __tablename__ = "portfolio_items"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    card_id = Column(UUID(as_uuid=True), ForeignKey("cards.id", ondelete="CASCADE"),
+                     nullable=False)
+    purchase_price_hkd = Column(Numeric(12, 2), nullable=False)
+    purchased_at = Column(Date, nullable=False)
+    added_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    card = relationship("Card", back_populates="portfolio_items")
