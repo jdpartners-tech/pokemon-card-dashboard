@@ -25,16 +25,18 @@ def upgrade() -> None:
 
     op.create_table(
         'portfolio_items',
-        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column('id', postgresql.UUID(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
         sa.Column('card_id', postgresql.UUID(as_uuid=True),
                   sa.ForeignKey('cards.id', ondelete='CASCADE'), nullable=False),
         sa.Column('purchase_price_hkd', sa.Numeric(12, 2), nullable=False),
         sa.Column('purchased_at', sa.Date(), nullable=False),
         sa.Column('added_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
     )
+    op.create_index('ix_portfolio_items_card_id', 'portfolio_items', ['card_id'])
 
 
 def downgrade() -> None:
+    op.drop_index('ix_portfolio_items_card_id', table_name='portfolio_items', if_exists=True)
     op.drop_table('portfolio_items')
     for col in ['sales_per_day', 'psa_population', 'pricecharting_url',
                 'snkrdunk_url', 'accent_color', 'image_url']:
