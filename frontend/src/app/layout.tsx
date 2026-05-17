@@ -1,45 +1,68 @@
-import type { Metadata } from "next";
-import Link from "next/link";
-import "./globals.css";
-import ScrapeTrigger from "@/components/ScrapeTrigger";
-import { reportUrl } from "@/lib/api";
+// frontend/src/app/layout.tsx
+"use client";
 
-export const metadata: Metadata = {
-  title: "Pokemon Card Dashboard",
-  description: "PSA 10 profitability research tool",
+import "./globals.css";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+const BG_MAP: Record<string, string> = {
+  "/":           "/backgrounds/home.jpg",
+  "/card":       "/backgrounds/detail.jpg",
+  "/my-cards":   "/backgrounds/my-cards.jpg",
+  "/watchlist":  "/backgrounds/watchlist.jpg",
 };
 
+function getBackground(pathname: string): string {
+  if (pathname.startsWith("/card/")) return BG_MAP["/card"];
+  return BG_MAP[pathname] ?? BG_MAP["/"];
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const bg = getBackground(pathname);
+
   return (
-    <html lang="en" className="bg-gray-950 text-gray-100">
-      <body className="min-h-screen">
-        <header className="border-b border-gray-800 bg-gray-900">
-          <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-6">
-              <Link href="/" className="font-bold text-gray-100 hover:text-white">
-                🃏 PSA10 Tracker
-              </Link>
-              <nav className="flex gap-5 text-sm text-gray-400">
-                <Link href="/" className="hover:text-gray-200 transition-colors">
-                  Cards
+    <html lang="en">
+      <body className="min-h-screen text-gray-100" style={{ backgroundColor: "#080c14" }}>
+        {/* Full-bleed background */}
+        <div
+          className="fixed inset-0 -z-10 bg-cover bg-center"
+          style={{
+            backgroundImage: `url(${bg})`,
+            filter: "brightness(0.18)",
+          }}
+        />
+
+        {/* Nav */}
+        <nav className="sticky top-0 z-50 border-b border-white/5"
+             style={{ background: "rgba(8, 12, 20, 0.85)", backdropFilter: "blur(8px)" }}>
+          <div className="max-w-7xl mx-auto px-4 h-12 flex items-center gap-6">
+            <span className="font-bold text-sm text-gray-100 tracking-wide">
+              PokéInvest
+            </span>
+            <div className="flex gap-4 ml-4">
+              {[
+                { href: "/", label: "Home" },
+                { href: "/my-cards", label: "My Cards" },
+                { href: "/watchlist", label: "Watchlist" },
+              ].map(({ href, label }) => (
+                <Link
+                  key={href}
+                  href={href}
+                  className={`text-sm transition-colors ${
+                    pathname === href
+                      ? "text-white font-semibold"
+                      : "text-gray-400 hover:text-gray-200"
+                  }`}
+                >
+                  {label}
                 </Link>
-                <Link href="/watchlist" className="hover:text-gray-200 transition-colors">
-                  Watchlist
-                </Link>
-              </nav>
-            </div>
-            <div className="flex items-center gap-3">
-              <a
-                href={reportUrl}
-                download
-                className="px-3 py-1.5 text-sm rounded border border-gray-600 text-gray-300 hover:border-gray-400 transition-colors"
-              >
-                ↓ CSV report
-              </a>
-              <ScrapeTrigger />
+              ))}
             </div>
           </div>
-        </header>
+        </nav>
+
+        {/* Page content */}
         <main className="max-w-7xl mx-auto px-4 py-6">{children}</main>
       </body>
     </html>
