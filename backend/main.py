@@ -3,7 +3,7 @@ import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.routers import cards, watchlist, report
+from backend.routers import cards, watchlist, report, portfolio
 
 logging.basicConfig(level=logging.INFO)
 
@@ -35,6 +35,7 @@ app.add_middleware(
 app.include_router(cards.router)
 app.include_router(watchlist.router)
 app.include_router(report.router)
+app.include_router(portfolio.router)
 
 
 @app.post("/admin/scrape", tags=["admin"])
