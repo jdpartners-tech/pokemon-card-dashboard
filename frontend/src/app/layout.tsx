@@ -1,35 +1,24 @@
-// frontend/src/app/layout.tsx
 "use client";
 
 import "./globals.css";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const BG_MAP: Record<string, string> = {
-  "/":           "/backgrounds/home.jpg",
-  "/card":       "/backgrounds/detail.jpg",
-  "/my-cards":   "/backgrounds/my-cards.jpg",
-  "/watchlist":  "/backgrounds/watchlist.jpg",
-};
-
-function getBackground(pathname: string): string {
-  if (pathname.startsWith("/card/")) return BG_MAP["/card"];
-  return BG_MAP[pathname] ?? BG_MAP["/"];
-}
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const bg = getBackground(pathname);
 
   return (
     <html lang="en">
       <body className="min-h-screen text-gray-100" style={{ backgroundColor: "#080c14" }}>
-        {/* Full-bleed background */}
+        {/* Full-bleed background — Pokemon Gen 1 colour wheel, fully visible */}
         <div
-          className="fixed inset-0 -z-10 bg-cover bg-center"
+          className="fixed inset-0 -z-10"
           style={{
-            backgroundImage: `url(${bg})`,
-            filter: "brightness(0.18)",
+            backgroundImage: "url(/backgrounds/pokemon-wheel.webp)",
+            backgroundSize: "contain",
+            backgroundPosition: "center center",
+            backgroundRepeat: "no-repeat",
+            filter: "brightness(0.28)",
           }}
         />
 
