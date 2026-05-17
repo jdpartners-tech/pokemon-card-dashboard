@@ -54,3 +54,6 @@ export async function toggleWatchlist(
     });
   }
 }
+
+export const fetchWatchlist = (): Promise<CardSummary[]> =>
+  fetcher(`${BASE}/watchlist`);
