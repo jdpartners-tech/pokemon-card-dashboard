@@ -11,3 +11,15 @@ services:
         value: "true"
       - key: DATABASE_URL
         sync: false
+
+  - type: web
+    name: pokemon-dashboard-frontend
+    runtime: node
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        value: https://pokemon-card-dashboard.onrender.com
+      - key: PORT
+        value: 3000
