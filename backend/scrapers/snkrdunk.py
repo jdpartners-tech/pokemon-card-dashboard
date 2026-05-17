@@ -1,7 +1,6 @@
 import logging
 import re
 from dataclasses import dataclass
-from playwright.sync_api import sync_playwright
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +24,12 @@ class ScrapedCard:
 
 
 def scrape_snkrdunk(max_pages: int = 20) -> list[ScrapedCard]:
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        logger.warning("playwright not installed — Snkrdunk scraping disabled")
+        return []
+
     cards = []
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
