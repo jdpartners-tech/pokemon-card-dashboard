@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 from backend.database import get_db
 from backend.models import Card, WatchlistItem
-from backend.routers.cards import _build_summary, _card_trends
+from backend.routers.cards import _build_summary, _card_metrics
 
 router = APIRouter(prefix="/report", tags=["report"])
 
@@ -18,12 +18,12 @@ def generate_report(db: Session = Depends(get_db)):
 
     results = []
     for card in cards:
-        trends = _card_trends(card.snapshots)
-        results.append((card, trends))
+        metrics = _card_metrics(card.snapshots)
+        results.append((card, metrics))
 
     # Report: watchlist cards first, then all others sorted by 7d trend
-    watchlist_results = [(c, t) for c, t in results if c.id in watchlist_ids]
-    other_results = [(c, t) for c, t in results if c.id not in watchlist_ids]
+    watchlist_results = [(c, m) for c, m in results if c.id in watchlist_ids]
+    other_results = [(c, m) for c, m in results if c.id not in watchlist_ids]
     other_results.sort(key=lambda x: x[1]["trend_7d"] or float("-inf"), reverse=True)
 
     rows = watchlist_results + other_results[:20]
@@ -32,8 +32,8 @@ def generate_report(db: Session = Depends(get_db)):
     writer = csv.writer(output)
     writer.writerow(["Name", "Set", "Snkrdunk (HKD)", "PriceCharting (HKD)", "7-day %", "30-day %", "90-day %"])
 
-    for card, trends in rows:
-        summary = _build_summary(card, trends, watchlist_ids)
+    for card, metrics in rows:
+        summary = _build_summary(card, metrics, watchlist_ids)
         writer.writerow([
             summary.name,
             summary.set_name,
