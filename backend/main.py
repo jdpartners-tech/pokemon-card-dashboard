@@ -155,11 +155,11 @@ async def trigger_snkrdunk_backfill():
 @app.get("/admin/test-pc", tags=["admin"])
 async def test_pc_scrape(url: str = "https://www.pricecharting.com/game/pokemon-base-set/charizard-4"):
     """Test a single PriceCharting product page scrape and return the raw result."""
-    import requests as req
-    from backend.scrapers.pricecharting import HEADERS, fetch_product_page_data
+    from backend.scrapers.pricecharting import HEADERS, fetch_product_page_data, _get_scraper
     # First check raw HTTP status
     try:
-        r = req.get(url, headers=HEADERS, timeout=15)
+        scraper = _get_scraper()
+        r = scraper.get(url, headers=HEADERS, timeout=15)
         http_status = r.status_code
         html_snippet = r.text[:500] if r.ok else r.text[:200]
     except Exception as e:

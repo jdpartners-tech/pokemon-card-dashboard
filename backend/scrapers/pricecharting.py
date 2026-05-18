@@ -150,6 +150,15 @@ def _parse_name(full_name: str) -> tuple[str, str]:
     return name, card_number
 
 
+def _get_scraper():
+    """Return a cloudscraper session that can bypass Cloudflare JS challenges."""
+    try:
+        import cloudscraper
+        return cloudscraper.create_scraper(browser={"browser": "chrome", "platform": "windows"})
+    except ImportError:
+        return requests.Session()
+
+
 def fetch_product_page_data(url: str) -> tuple[float | None, str | None]:
     """
     Scrape a PriceCharting product page and return (price_usd, image_url).
@@ -157,7 +166,8 @@ def fetch_product_page_data(url: str) -> tuple[float | None, str | None]:
     image_url  — card image URL from the cover div, or None
     """
     try:
-        r = requests.get(url, headers=HEADERS, timeout=15)
+        scraper = _get_scraper()
+        r = scraper.get(url, headers=HEADERS, timeout=15)
         if r.status_code in (404, 403):
             return None, None
         r.raise_for_status()
