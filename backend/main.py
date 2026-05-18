@@ -155,15 +155,20 @@ async def trigger_snkrdunk_backfill():
 @app.get("/admin/test-pc", tags=["admin"])
 async def test_pc_scrape(url: str = "https://www.pricecharting.com/game/pokemon-base-set/charizard-4"):
     """Test a single PriceCharting product page scrape and return the raw result."""
-    from backend.scrapers.pricecharting import HEADERS, fetch_product_page_data, _get_scraper
-    # First check raw HTTP status
+    from backend.scrapers.pricecharting import fetch_product_page_data, _get_scraper
+    try:
+        import cloudscraper as _cs
+        scraper_version = _cs.__version__
+    except ImportError:
+        scraper_version = "not installed"
     try:
         scraper = _get_scraper()
-        r = scraper.get(url, headers=HEADERS, timeout=15)
+        r = scraper.get(url, timeout=15)
         http_status = r.status_code
         html_snippet = r.text[:500] if r.ok else r.text[:200]
+        actual_ua = r.request.headers.get("User-Agent", "unknown") if r.request else "unknown"
     except Exception as e:
-        return {"error": str(e), "url": url}
+        return {"error": str(e), "url": url, "cloudscraper_version": scraper_version}
     price_usd, image_url = fetch_product_page_data(url)
     return {
         "url": url,
@@ -171,7 +176,8 @@ async def test_pc_scrape(url: str = "https://www.pricecharting.com/game/pokemon-
         "price_usd": price_usd,
         "image_url": image_url,
         "html_snippet": html_snippet,
-        "headers_sent": HEADERS,
+        "cloudscraper_version": scraper_version,
+        "actual_user_agent": actual_ua,
     }
 
 

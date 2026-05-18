@@ -167,7 +167,8 @@ def fetch_product_page_data(url: str) -> tuple[float | None, str | None]:
     """
     try:
         scraper = _get_scraper()
-        r = scraper.get(url, headers=HEADERS, timeout=15)
+        # Don't override cloudscraper's browser headers — let it manage its own fingerprint
+        r = scraper.get(url, timeout=15)
         if r.status_code in (404, 403):
             return None, None
         r.raise_for_status()
