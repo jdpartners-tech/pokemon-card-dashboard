@@ -152,6 +152,29 @@ async def trigger_snkrdunk_backfill():
     return {"ok": True, "message": "Snkrdunk backfill started in background — this may take several minutes"}
 
 
+@app.get("/admin/test-pc", tags=["admin"])
+async def test_pc_scrape(url: str = "https://www.pricecharting.com/game/pokemon-base-set/charizard-4"):
+    """Test a single PriceCharting product page scrape and return the raw result."""
+    import requests as req
+    from backend.scrapers.pricecharting import HEADERS, fetch_product_page_data
+    # First check raw HTTP status
+    try:
+        r = req.get(url, headers=HEADERS, timeout=15)
+        http_status = r.status_code
+        html_snippet = r.text[:500] if r.ok else r.text[:200]
+    except Exception as e:
+        return {"error": str(e), "url": url}
+    price_usd, image_url = fetch_product_page_data(url)
+    return {
+        "url": url,
+        "http_status": http_status,
+        "price_usd": price_usd,
+        "image_url": image_url,
+        "html_snippet": html_snippet,
+        "headers_sent": HEADERS,
+    }
+
+
 @app.get("/admin/debug", tags=["admin"])
 async def debug_db():
     """Return snapshot counts and sample data to diagnose missing prices."""
