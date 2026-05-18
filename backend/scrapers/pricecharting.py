@@ -151,12 +151,16 @@ def _parse_name(full_name: str) -> tuple[str, str]:
 
 
 def _get_scraper():
-    """Return a cloudscraper session that can bypass Cloudflare JS challenges."""
+    """Return a session that can bypass Cloudflare by impersonating Chrome at the TLS level."""
     try:
-        import cloudscraper
-        return cloudscraper.create_scraper(browser={"browser": "chrome", "platform": "windows"})
+        from curl_cffi import requests as curl_requests
+        return curl_requests.Session(impersonate="chrome110")
     except ImportError:
-        return requests.Session()
+        try:
+            import cloudscraper
+            return cloudscraper.create_scraper(browser={"browser": "chrome", "platform": "windows"})
+        except ImportError:
+            return requests.Session()
 
 
 def fetch_product_page_data(url: str) -> tuple[float | None, str | None]:

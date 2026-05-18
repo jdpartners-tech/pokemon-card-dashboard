@@ -157,10 +157,14 @@ async def test_pc_scrape(url: str = "https://www.pricecharting.com/game/pokemon-
     """Test a single PriceCharting product page scrape and return the raw result."""
     from backend.scrapers.pricecharting import fetch_product_page_data, _get_scraper
     try:
-        import cloudscraper as _cs
-        scraper_version = _cs.__version__
+        from curl_cffi import requests as _cc
+        scraper_version = f"curl_cffi (impersonate=chrome110)"
     except ImportError:
-        scraper_version = "not installed"
+        try:
+            import cloudscraper as _cs
+            scraper_version = f"cloudscraper {_cs.__version__}"
+        except ImportError:
+            scraper_version = "plain requests"
     try:
         scraper = _get_scraper()
         r = scraper.get(url, timeout=15)
