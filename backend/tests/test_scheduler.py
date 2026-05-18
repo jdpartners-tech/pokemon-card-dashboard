@@ -29,8 +29,14 @@ def test_get_or_create_card_links_ids(db):
 
 
 def test_collect_pricecharting_returns_price_dict(db):
-    scraped = [PCCard(name="Venusaur", set_name="Base Set", card_number="15/102", pricecharting_id="pc-venu", psa10_price_hkd=3900.0)]
-    with patch("backend.scheduler.scrape_pricecharting", return_value=scraped):
+    scraped = [PCCard(
+        name="Venusaur", set_name="Base Set", card_number="15/102",
+        pricecharting_id="pc-venu", psa10_price_hkd=3900.0,
+        pricecharting_url="https://www.pricecharting.com/game/pokemon-base-set/venusaur-15",
+    )]
+    with patch("backend.scheduler.scrape_pricecharting", return_value=scraped), \
+         patch("backend.scheduler.fetch_product_page_data", return_value=(500.0, None)), \
+         patch("backend.scheduler.time.sleep"):
         prices = _collect_pricecharting(db, fx_rate=7.8)
     db.flush()
     card = db.query(Card).filter(Card.pricecharting_id == "pc-venu").first()
@@ -53,13 +59,19 @@ def test_collect_snkrdunk_returns_price_dict(db):
 
 def test_run_scrape_job_merges_prices_into_single_snapshot(db):
     """Both scrapers returning the same card writes ONE new snapshot with both prices filled."""
-    pc_scraped = [PCCard(name="MergeTestCard", set_name="Test Set", card_number="1", pricecharting_id="pc-merge-test", psa10_price_hkd=780.0)]
+    pc_scraped = [PCCard(
+        name="MergeTestCard", set_name="Test Set", card_number="1",
+        pricecharting_id="pc-merge-test", psa10_price_hkd=780.0,
+        pricecharting_url="https://www.pricecharting.com/game/test-set/mergetestcard-1",
+    )]
     sd_scraped = [SDCard(name="MergeTestCard", set_name="Test Set", card_number="1", snkrdunk_id="sd-merge-test", psa10_price_hkd=850.0)]
 
     with patch("backend.scheduler.SessionLocal", return_value=db), \
          patch("backend.scheduler.get_usd_to_hkd", return_value=7.8), \
          patch("backend.scheduler.scrape_pricecharting", return_value=pc_scraped), \
-         patch("backend.scheduler.scrape_snkrdunk", return_value=sd_scraped):
+         patch("backend.scheduler.scrape_snkrdunk", return_value=sd_scraped), \
+         patch("backend.scheduler.fetch_product_page_data", return_value=(100.0, None)), \
+         patch("backend.scheduler.time.sleep"):
         run_scrape_job()
 
     db.flush()

@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    "Accept": "application/json, text/html, */*;q=0.8",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.9",
 }
 
@@ -164,13 +164,20 @@ def fetch_product_page_data(url: str) -> tuple[float | None, str | None]:
         soup = BeautifulSoup(r.text, "html.parser")
 
         # ── Price ────────────────────────────────────────────────────────────
+        # PriceCharting repurposes condition IDs for card grades:
+        #   #manual_only_price = PSA 10  (the one we want)
+        #   #graded_price      = Grade 9 (NOT PSA 10 — do not use)
         price_usd: float | None = None
 
-        el = soup.find(id="graded_price")
+        el = soup.find(id="manual_only_price")
         if el:
-            text = re.sub(r"[^0-9.]", "", el.get_text())
-            if text:
-                price_usd = float(text)
+            price_span = el.find("span", class_="js-price")
+            if price_span:
+                text = re.sub(r"[^0-9.]", "", price_span.get_text())
+                try:
+                    price_usd = float(text) if text else None
+                except ValueError:
+                    pass
 
         if price_usd is None:
             for row in soup.find_all("tr"):
