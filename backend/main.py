@@ -104,6 +104,7 @@ async def backfill_images():
     import threading
 
     def _run():
+        import time
         from backend.database import SessionLocal
         from backend.models import Card
         from backend.scrapers.pokemontcg import fetch_card_image
@@ -119,6 +120,7 @@ async def backfill_images():
                     db.commit()
                 except Exception as e:
                     logging.warning(f"Image fetch failed for {card.name}: {e}")
+                time.sleep(0.2)  # avoid pokemontcg.io rate limiting
         finally:
             db.close()
 
