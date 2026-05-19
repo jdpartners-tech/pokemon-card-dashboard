@@ -3,14 +3,16 @@ Run this script from your LOCAL machine to fix PriceCharting PSA 10 prices.
 
 Render's server IP is blocked by Cloudflare; your home IP is not.
 This script:
-  1. Reconstructs pricecharting_url for every card (none were saved to DB)
+  1. Reconstructs pricecharting_url for any card missing it
   2. Scrapes PSA 10 price from each card's product page
-  3. Inserts fresh PriceSnapshots with correct prices
+  3. Inserts fresh PriceSnapshots — skips cards already updated today
 
 Usage:
     From the project root:
         python tools/fix_prices_local.py
     (Requires DATABASE_URL in .env at the project root)
+
+Safe to re-run — skips cards that already have a fresh snapshot from today.
 """
 
 import os
@@ -19,6 +21,7 @@ import sys
 import time
 import logging
 from decimal import Decimal
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -33,8 +36,9 @@ if not DATABASE_URL:
 
 os.environ["DATABASE_URL"] = DATABASE_URL
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import OperationalError
 from backend.models import Card, PriceSnapshot
 from backend.scrapers.pricecharting import fetch_product_page_data
 
@@ -43,7 +47,6 @@ logger = logging.getLogger(__name__)
 
 FX_FALLBACK = 7.80
 
-# PriceCharting set slug mapping for every set currently in the DB
 SET_SLUG_MAP = {
     "Base Set":             "pokemon-base-set",
     "Base Set 2":           "pokemon-base-set-2",
@@ -61,7 +64,22 @@ SET_SLUG_MAP = {
 }
 
 
-def build_pc_url(card: Card) -> str | None:
+def make_engine():
+    return create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,           # test connection before use
+        pool_recycle=60,              # recycle connections every 60s
+        connect_args={
+            "keepalives": 1,
+            "keepalives_idle": 30,
+            "keepalives_interval": 10,
+            "keepalives_count": 5,
+            "connect_timeout": 10,
+        },
+    )
+
+
+def build_pc_url(card):
     set_slug = SET_SLUG_MAP.get(card.set_name)
     if not set_slug:
         return None
@@ -71,8 +89,7 @@ def build_pc_url(card: Card) -> str | None:
     return f"https://www.pricecharting.com/game/{set_slug}/{slug}"
 
 
-def fix_broken_url(url: str) -> str:
-    """Strip any extra path segment after the card slug (e.g. /ho-oh-7/64 → /ho-oh-7)."""
+def fix_broken_url(url):
     parts = url.split("/game/", 1)
     if len(parts) != 2:
         return url
@@ -81,7 +98,7 @@ def fix_broken_url(url: str) -> str:
     return f"{base}/game/{'/'.join(segments)}"
 
 
-def get_fx_rate() -> float:
+def get_fx_rate():
     try:
         from backend.scrapers.fx import get_usd_to_hkd
         rate = get_usd_to_hkd()
@@ -92,17 +109,32 @@ def get_fx_rate() -> float:
         return FX_FALLBACK
 
 
+def get_already_done(engine):
+    """Return set of card_ids that already have a snapshot from today."""
+    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT DISTINCT card_id FROM price_snapshots WHERE scraped_at::date = :today AND pricecharting_price_hkd IS NOT NULL"),
+            {"today": today},
+        ).fetchall()
+    return {str(r[0]) for r in rows}
+
+
 def run():
-    engine = create_engine(DATABASE_URL)
+    engine = make_engine()
+    fx = get_fx_rate()
+
+    # Find cards already processed in a previous run today — skip them
+    already_done = get_already_done(engine)
+    logger.info(f"Already updated today: {len(already_done)} cards — will skip these")
+
     Session = sessionmaker(bind=engine)
     db = Session()
 
-    fx = get_fx_rate()
-
     cards = db.query(Card).all()
-    logger.info(f"Processing {len(cards)} cards")
+    logger.info(f"Total cards: {len(cards)}")
 
-    # Step 1: populate pricecharting_url for any card missing it
+    # Step 1: populate missing pricecharting_urls
     url_updated = 0
     for card in cards:
         if not card.pricecharting_url:
@@ -115,15 +147,16 @@ def run():
             if fixed != card.pricecharting_url:
                 card.pricecharting_url = fixed
     db.commit()
-    logger.info(f"URLs populated/fixed for {url_updated} cards")
+    if url_updated:
+        logger.info(f"URLs populated for {url_updated} cards")
 
-    # Step 2: scrape PSA 10 price from each product page
-    cards_with_url = db.query(Card).filter(Card.pricecharting_url.isnot(None)).all()
-    logger.info(f"Scraping PSA 10 prices for {len(cards_with_url)} cards (FX: {fx})")
+    # Step 2: scrape prices — skip cards done today, reconnect on DB errors
+    cards_with_url = [c for c in cards if c.pricecharting_url]
+    todo = [c for c in cards_with_url if str(c.id) not in already_done]
+    logger.info(f"Scraping prices for {len(todo)} remaining cards (FX: {fx})")
 
-    fixed = 0
-    failed = 0
-    for i, card in enumerate(cards_with_url, 1):
+    fixed = skipped = failed = 0
+    for i, card in enumerate(todo, 1):
         price_usd, image_url = fetch_product_page_data(card.pricecharting_url)
 
         if price_usd and price_usd > 0:
@@ -135,23 +168,44 @@ def run():
             )
             db.add(snap)
             fixed += 1
-            logger.info(f"[{i}/{len(cards_with_url)}] {card.name}: ${price_usd:.2f} / HK${price_usd * fx:.2f}")
+            logger.info(f"[{i}/{len(todo)}] {card.name}: ${price_usd:.2f} / HK${price_usd * fx:.2f}")
         else:
             failed += 1
-            logger.warning(f"[{i}/{len(cards_with_url)}] {card.name}: no price ({card.pricecharting_url})")
+            logger.warning(f"[{i}/{len(todo)}] {card.name}: no price ({card.pricecharting_url})")
 
         if image_url and not card.image_url:
             card.image_url = image_url
 
-        if i % 50 == 0:
-            db.commit()
-            logger.info(f"  → committed at card {i}")
+        # Commit every 25 cards with reconnect on failure
+        if i % 25 == 0:
+            for attempt in range(3):
+                try:
+                    db.commit()
+                    logger.info(f"  → committed at card {i} ({fixed} prices so far)")
+                    break
+                except OperationalError as e:
+                    logger.warning(f"DB connection lost, reconnecting (attempt {attempt+1})...")
+                    db.close()
+                    engine = make_engine()
+                    Session = sessionmaker(bind=engine)
+                    db = Session()
+                    time.sleep(2)
 
         time.sleep(0.5)
 
-    db.commit()
+    # Final commit
+    for attempt in range(3):
+        try:
+            db.commit()
+            break
+        except OperationalError:
+            db.close()
+            engine = make_engine()
+            db = sessionmaker(bind=engine)()
+            time.sleep(2)
+
     db.close()
-    logger.info(f"Done — {fixed} prices updated, {failed} failed/not found")
+    logger.info(f"Done — {fixed} new prices, {skipped} skipped, {failed} not found")
 
 
 if __name__ == "__main__":
