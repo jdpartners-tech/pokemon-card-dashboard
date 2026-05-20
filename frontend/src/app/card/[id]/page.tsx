@@ -1,7 +1,7 @@
 // frontend/src/app/card/[id]/page.tsx
 "use client";
 
-import { use, useState } from "react";
+import { use } from "react";
 import Link from "next/link";
 import useSWR from "swr";
 import { fetchCard } from "@/lib/api";
@@ -31,7 +31,6 @@ function TrendTile({ label, value, active }: { label: string; value: number | nu
 export default function CardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { data: card, error, isLoading } = useSWR(id, fetchCard);
-  const [range, setRange] = useState<"6m" | "1y" | "all">("1y");
 
   if (isLoading) return <div className="text-center py-16 text-gray-500 animate-pulse">Loading…</div>;
   if (error || !card) return (
@@ -39,13 +38,6 @@ export default function CardPage({ params }: { params: Promise<{ id: string }> }
       Card not found. <Link href="/" className="text-blue-400 hover:underline">Back to cards</Link>
     </div>
   );
-
-  const now = Date.now();
-  const rangeDays = range === "6m" ? 180 : range === "1y" ? 365 : Infinity;
-  const filteredHistory = card.history.filter((h) => {
-    const diff = (now - new Date(h.scraped_at).getTime()) / 86400000;
-    return diff <= rangeDays;
-  });
 
   function buildPcUrl(name: string, cardNumber: string | null, setName: string): string {
     const slugify = (s: string) =>
@@ -136,30 +128,19 @@ export default function CardPage({ params }: { params: Promise<{ id: string }> }
       </div>
 
       {/* Trend tiles */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-5 gap-3">
         <TrendTile label="1 month" value={card.trend_1m} active />
         <TrendTile label="3 months" value={card.trend_3m} />
         <TrendTile label="6 months" value={card.trend_6m} />
+        <TrendTile label="1 year" value={card.trend_1y} />
         <TrendTile label="All time" value={card.trend_all} />
       </div>
 
       {/* Price history chart */}
       <div className="rounded-lg border border-white/10 p-4"
            style={{ background: "rgba(15, 23, 42, 0.75)", backdropFilter: "blur(4px)" }}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="text-xs text-gray-400 uppercase tracking-wide font-medium">PSA 10 Price History</div>
-          <div className="flex gap-1">
-            {(["6m", "1y", "all"] as const).map((r) => (
-              <button key={r} onClick={() => setRange(r)}
-                      className={`text-xs px-2 py-0.5 rounded border transition-colors ${
-                        range === r ? "border-blue-500 text-blue-400" : "border-white/10 text-gray-500 hover:border-white/30"
-                      }`}>
-                {r}
-              </button>
-            ))}
-          </div>
-        </div>
-        <PriceChart history={filteredHistory} />
+        <div className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-4">PSA 10 Price History</div>
+        <PriceChart history={card.history} />
       </div>
 
       {/* PSA pop */}

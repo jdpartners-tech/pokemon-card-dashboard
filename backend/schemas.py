@@ -18,6 +18,7 @@ class CardSummary(BaseModel):
     trend_1m: Optional[float]
     trend_3m: Optional[float]
     trend_6m: Optional[float]
+    trend_1y: Optional[float]
     trend_all: Optional[float]
     pct_from_ath: Optional[float]
     trend_consistency: int

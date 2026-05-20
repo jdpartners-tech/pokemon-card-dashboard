@@ -12,6 +12,7 @@ export interface CardSummary {
   trend_1m: number | null;
   trend_3m: number | null;
   trend_6m: number | null;
+  trend_1y: number | null;
   trend_all: number | null;
   pct_from_ath: number | null;
   trend_consistency: number;

@@ -3,20 +3,22 @@
 import { useState } from "react";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, CartesianGrid, ReferenceLine,
+  ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import type { SnapshotPoint } from "@/lib/types";
 
-type Range = "1W" | "1M" | "3M" | "ALL";
+type Range = "1M" | "3M" | "6M" | "1Y" | "ALL";
 
-const RANGE_DAYS: Record<Range, number> = { "1W": 7, "1M": 30, "3M": 90, "ALL": Infinity };
+const RANGE_DAYS: Record<Range, number> = {
+  "1M": 30, "3M": 90, "6M": 180, "1Y": 365, "ALL": Infinity,
+};
 
 interface Props {
   history: SnapshotPoint[];
 }
 
 export default function PriceChart({ history }: Props) {
-  const [range, setRange] = useState<Range>("3M");
+  const [range, setRange] = useState<Range>("1Y");
 
   if (history.length === 0) {
     return <div className="text-center py-12 text-gray-500">No price history yet.</div>;
@@ -45,9 +47,8 @@ export default function PriceChart({ history }: Props) {
 
   return (
     <div>
-      {/* Range tabs */}
       <div className="flex gap-1 mb-4">
-        {(["1W", "1M", "3M", "ALL"] as Range[]).map((r) => (
+        {(["1M", "3M", "6M", "1Y", "ALL"] as Range[]).map((r) => (
           <button
             key={r}
             onClick={() => setRange(r)}

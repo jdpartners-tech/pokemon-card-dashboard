@@ -27,6 +27,7 @@ def _card_metrics(snapshots: list) -> dict:
         "trend_1m":          calculate_trend_vs_days_ago(snapshots, 30),
         "trend_3m":          calculate_trend_vs_days_ago(snapshots, 90),
         "trend_6m":          calculate_trend_vs_days_ago(snapshots, 180),
+        "trend_1y":          calculate_trend_vs_days_ago(snapshots, 365),
         "trend_all":         calculate_trend_all_time(snapshots),
         "pct_from_ath":      calculate_pct_from_ath(snapshots),
         "trend_consistency": calculate_trend_consistency(snapshots),
@@ -50,6 +51,7 @@ def _build_summary(card: Card, metrics: dict, watchlist_ids: set) -> CardSummary
         trend_1m=metrics["trend_1m"],
         trend_3m=metrics["trend_3m"],
         trend_6m=metrics["trend_6m"],
+        trend_1y=metrics["trend_1y"],
         trend_all=metrics["trend_all"],
         pct_from_ath=metrics["pct_from_ath"],
         trend_consistency=metrics["trend_consistency"],
@@ -65,7 +67,7 @@ def get_cards(
     positive_only: bool = Query(False),
     db: Session = Depends(get_db),
 ):
-    trend_sorts = {"trend_1m", "trend_3m", "trend_6m", "trend_all"}
+    trend_sorts = {"trend_1m", "trend_3m", "trend_6m", "trend_1y", "trend_all"}
     valid_sorts = trend_sorts | {"price_hkd", "name"}
     if sort not in valid_sorts:
         sort = "trend_1m"

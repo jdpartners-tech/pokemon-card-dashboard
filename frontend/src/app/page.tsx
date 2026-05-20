@@ -10,6 +10,7 @@ const SORT_OPTIONS: { value: NonNullable<CardFilters["sort"]>; label: string }[]
   { value: "trend_1m",  label: "Trend: 1M"   },
   { value: "trend_3m",  label: "Trend: 3M"   },
   { value: "trend_6m",  label: "Trend: 6M"   },
+  { value: "trend_1y",  label: "Trend: 1Y"   },
   { value: "trend_all", label: "Trend: All"  },
   { value: "price_hkd", label: "Price (HKD)" },
   { value: "name",      label: "Name (A–Z)"  },

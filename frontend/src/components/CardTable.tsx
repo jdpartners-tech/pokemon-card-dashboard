@@ -43,6 +43,7 @@ export default function CardTable({ cards, activeSort = "" }: Props) {
     { key: "trend_1m",  label: "1M"  },
     { key: "trend_3m",  label: "3M"  },
     { key: "trend_6m",  label: "6M"  },
+    { key: "trend_1y",  label: "1Y"  },
     { key: "trend_all", label: "All" },
   ];
 
