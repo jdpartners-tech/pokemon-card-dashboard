@@ -24,3 +24,7 @@ Thumbs.db
 
 # Worktrees
 .worktrees/
+
+# Runtime logs
+tools/*.log
+tools/*.txt
