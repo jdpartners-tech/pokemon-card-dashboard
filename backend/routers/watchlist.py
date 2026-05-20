@@ -19,7 +19,7 @@ def get_watchlist(db: Session = Depends(get_db)):
         metrics = _card_metrics(card.snapshots)
         results.append((card, metrics))
 
-    results.sort(key=lambda x: x[1]["trend_7d"] or float("-inf"), reverse=True)
+    results.sort(key=lambda x: x[1]["trend_1m"] or float("-inf"), reverse=True)
     return [_build_summary(card, metrics, watchlist_ids) for card, metrics in results]
 
 

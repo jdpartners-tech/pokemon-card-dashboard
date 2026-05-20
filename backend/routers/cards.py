@@ -6,8 +6,8 @@ from backend.database import get_db
 from backend.models import Card, PriceSnapshot, WatchlistItem
 from backend.schemas import CardSummary, CardDetail, SnapshotPoint
 from backend.scoring import (
-    calculate_trend_vs_days_ago, calculate_ath,
-    calculate_pct_from_ath, calculate_trend_consistency,
+    calculate_trend_vs_days_ago, calculate_trend_all_time,
+    calculate_ath, calculate_pct_from_ath, calculate_trend_consistency,
 )
 
 router = APIRouter(prefix="/cards", tags=["cards"])
@@ -24,10 +24,10 @@ def _latest_price(snaps, field: str):
 def _card_metrics(snapshots: list) -> dict:
     ath, ath_date = calculate_ath(snapshots)
     return {
-        "trend_7d":          calculate_trend_vs_days_ago(snapshots, 7),
-        "trend_30d":         calculate_trend_vs_days_ago(snapshots, 30),
-        "trend_90d":         calculate_trend_vs_days_ago(snapshots, 90),
-        "trend_1y":          calculate_trend_vs_days_ago(snapshots, 365),
+        "trend_1m":          calculate_trend_vs_days_ago(snapshots, 30),
+        "trend_3m":          calculate_trend_vs_days_ago(snapshots, 90),
+        "trend_6m":          calculate_trend_vs_days_ago(snapshots, 180),
+        "trend_all":         calculate_trend_all_time(snapshots),
         "pct_from_ath":      calculate_pct_from_ath(snapshots),
         "trend_consistency": calculate_trend_consistency(snapshots),
         "ath":               ath,
@@ -47,10 +47,10 @@ def _build_summary(card: Card, metrics: dict, watchlist_ids: set) -> CardSummary
         snkrdunk_price_hkd=_latest_price(snaps, "snkrdunk_price_hkd"),
         pricecharting_price_hkd=_latest_price(snaps, "pricecharting_price_hkd"),
         psa_population=card.psa_population,
-        trend_7d=metrics["trend_7d"],
-        trend_30d=metrics["trend_30d"],
-        trend_90d=metrics["trend_90d"],
-        trend_1y=metrics["trend_1y"],
+        trend_1m=metrics["trend_1m"],
+        trend_3m=metrics["trend_3m"],
+        trend_6m=metrics["trend_6m"],
+        trend_all=metrics["trend_all"],
         pct_from_ath=metrics["pct_from_ath"],
         trend_consistency=metrics["trend_consistency"],
         in_watchlist=card.id in watchlist_ids,
@@ -59,16 +59,16 @@ def _build_summary(card: Card, metrics: dict, watchlist_ids: set) -> CardSummary
 
 @router.get("", response_model=list[CardSummary])
 def get_cards(
-    sort: str = Query("trend_30d"),
+    sort: str = Query("trend_1m"),
     search: Optional[str] = Query(None),
     limit: int = Query(50),
     positive_only: bool = Query(False),
     db: Session = Depends(get_db),
 ):
-    trend_sorts = {"trend_7d", "trend_30d", "trend_90d", "trend_1y"}
+    trend_sorts = {"trend_1m", "trend_3m", "trend_6m", "trend_all"}
     valid_sorts = trend_sorts | {"price_hkd", "name"}
     if sort not in valid_sorts:
-        sort = "trend_30d"
+        sort = "trend_1m"
 
     query = db.query(Card)
     if search:

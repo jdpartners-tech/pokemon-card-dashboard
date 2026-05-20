@@ -9,10 +9,10 @@ export interface CardSummary {
   snkrdunk_price_hkd: number | null;
   pricecharting_price_hkd: number | null;
   psa_population: number | null;
-  trend_7d: number | null;
-  trend_30d: number | null;
-  trend_90d: number | null;
-  trend_1y: number | null;
+  trend_1m: number | null;
+  trend_3m: number | null;
+  trend_6m: number | null;
+  trend_all: number | null;
   pct_from_ath: number | null;
   trend_consistency: number;
   in_watchlist: boolean;
@@ -47,7 +47,7 @@ export interface PortfolioItem {
   current_price_hkd: number | null;
   pnl_hkd: number | null;
   pnl_pct: number | null;
-  trend_30d: number | null;
+  trend_1m: number | null;
 }
 
 export interface PortfolioSummary {

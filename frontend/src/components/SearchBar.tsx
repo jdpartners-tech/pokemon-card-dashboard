@@ -21,7 +21,7 @@ export default function SearchBar() {
     if (!q.trim()) { setResults([]); setOpen(false); return; }
     setLoading(true);
     try {
-      const url = cardsUrl({ search: q, limit: 8, sort: "trend_30d" });
+      const url = cardsUrl({ search: q, limit: 8, sort: "trend_1m" });
       const data: CardSummary[] = await fetch(url).then(r => r.json());
       setResults(Array.isArray(data) ? data : []);
       setOpen(true);

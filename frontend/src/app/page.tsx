@@ -7,12 +7,12 @@ import { cardsUrl, fetchCards, type CardFilters } from "@/lib/api";
 import CardTable from "@/components/CardTable";
 
 const SORT_OPTIONS: { value: NonNullable<CardFilters["sort"]>; label: string }[] = [
-  { value: "trend_7d",   label: "Trend: 7d"   },
-  { value: "trend_30d",  label: "Trend: 30d"  },
-  { value: "trend_90d",  label: "Trend: 90d"  },
-  { value: "trend_1y",   label: "Trend: 1y"   },
-  { value: "price_hkd",  label: "Price (HKD)" },
-  { value: "name",       label: "Name (A–Z)"  },
+  { value: "trend_1m",  label: "Trend: 1M"   },
+  { value: "trend_3m",  label: "Trend: 3M"   },
+  { value: "trend_6m",  label: "Trend: 6M"   },
+  { value: "trend_all", label: "Trend: All"  },
+  { value: "price_hkd", label: "Price (HKD)" },
+  { value: "name",      label: "Name (A–Z)"  },
 ];
 
 function SortDropdown({
@@ -33,7 +33,7 @@ function SortDropdown({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const current = SORT_OPTIONS.find(o => o.value === value) ?? SORT_OPTIONS[1];
+  const current = SORT_OPTIONS.find(o => o.value === value) ?? SORT_OPTIONS[0];
 
   return (
     <div ref={ref} className="relative">
@@ -72,7 +72,7 @@ function SortDropdown({
 }
 
 export default function HomePage() {
-  const [filters, setFilters] = useState<CardFilters>({ sort: "trend_30d" });
+  const [filters, setFilters] = useState<CardFilters>({ sort: "trend_1m" });
   const url = cardsUrl(filters);
   const { data, error, isLoading } = useSWR(url, fetchCards, { refreshInterval: 60_000 });
 
@@ -89,7 +89,7 @@ export default function HomePage() {
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           <SortDropdown
-            value={filters.sort ?? "trend_30d"}
+            value={filters.sort ?? "trend_1m"}
             onChange={(sort) => setFilters(f => ({ ...f, sort }))}
           />
           <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-gray-400 hover:text-gray-200 transition-colors">
@@ -112,7 +112,7 @@ export default function HomePage() {
       {isLoading && (
         <div className="text-center py-16 text-gray-500 animate-pulse">Loading cards…</div>
       )}
-      {data && <CardTable cards={data} activeSort={filters.sort ?? "trend_30d"} />}
+      {data && <CardTable cards={data} activeSort={filters.sort ?? "trend_1m"} />}
     </div>
   );
 }

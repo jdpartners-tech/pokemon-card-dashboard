@@ -51,6 +51,20 @@ def calculate_ath(snapshots) -> tuple[Optional[float], Optional[datetime]]:
     return price, _aware_dt(best.scraped_at)
 
 
+def calculate_trend_all_time(snapshots) -> Optional[float]:
+    """% change from the very first snapshot to the latest."""
+    if not snapshots:
+        return None
+    sorted_snaps = sorted(snapshots, key=lambda s: _aware_dt(s.scraped_at))
+    first_price = _get_price(sorted_snaps[0])
+    if not first_price or first_price == 0:
+        return None
+    latest_price = _get_price(sorted_snaps[-1])
+    if not latest_price:
+        return None
+    return round((latest_price - first_price) / first_price * 100, 2)
+
+
 def calculate_pct_from_ath(snapshots) -> Optional[float]:
     """% difference between current price and all-time high. Negative = below ATH."""
     if not snapshots:
@@ -111,29 +125,27 @@ def score_cards(card_snapshots: list[tuple]) -> list[dict]:
     raw = []
     for card, snapshots in card_snapshots:
         raw.append({
-            "card": card,
-            "trend_7d":  calculate_trend_vs_days_ago(snapshots, 7)  or 0.0,
-            "trend_30d": calculate_trend_vs_days_ago(snapshots, 30) or 0.0,
-            "trend_90d": calculate_trend_vs_days_ago(snapshots, 90) or 0.0,
-            "arb_gap":   calculate_arbitrage(snapshots)             or 0.0,
+            "card":      card,
+            "trend_1m":  calculate_trend_vs_days_ago(snapshots, 30)  or 0.0,
+            "trend_3m":  calculate_trend_vs_days_ago(snapshots, 90)  or 0.0,
+            "arb_gap":   calculate_arbitrage(snapshots)               or 0.0,
             "volume":    float(len(snapshots)),
         })
 
-    t7_norm  = _normalize([r["trend_7d"]  for r in raw])
-    t30_norm = _normalize([r["trend_30d"] for r in raw])
-    arb_norm = _normalize([r["arb_gap"]   for r in raw])
-    vol_norm = _normalize([r["volume"]    for r in raw])
+    t1m_norm = _normalize([r["trend_1m"] for r in raw])
+    t3m_norm = _normalize([r["trend_3m"] for r in raw])
+    arb_norm = _normalize([r["arb_gap"]  for r in raw])
+    vol_norm = _normalize([r["volume"]   for r in raw])
 
     results = []
     for i, r in enumerate(raw):
-        score = (t7_norm[i] * 0.40 + t30_norm[i] * 0.30 + arb_norm[i] * 0.20 + vol_norm[i] * 0.10) * 100
+        score = (t1m_norm[i] * 0.40 + t3m_norm[i] * 0.30 + arb_norm[i] * 0.20 + vol_norm[i] * 0.10) * 100
         results.append({
-            "card":      r["card"],
-            "score":     round(score, 1),
-            "trend_7d":  r["trend_7d"],
-            "trend_30d": r["trend_30d"],
-            "trend_90d": r["trend_90d"],
-            "arb_gap":   round(r["arb_gap"], 2),
+            "card":     r["card"],
+            "score":    round(score, 1),
+            "trend_1m": r["trend_1m"],
+            "trend_3m": r["trend_3m"],
+            "arb_gap":  round(r["arb_gap"], 2),
         })
 
     return sorted(results, key=lambda x: x["score"], reverse=True)

@@ -15,10 +15,10 @@ class CardSummary(BaseModel):
     snkrdunk_price_hkd: Optional[float]
     pricecharting_price_hkd: Optional[float]
     psa_population: Optional[int]
-    trend_7d: Optional[float]
-    trend_30d: Optional[float]
-    trend_90d: Optional[float]
-    trend_1y: Optional[float]
+    trend_1m: Optional[float]
+    trend_3m: Optional[float]
+    trend_6m: Optional[float]
+    trend_all: Optional[float]
     pct_from_ath: Optional[float]
     trend_consistency: int
     in_watchlist: bool
@@ -61,7 +61,7 @@ class PortfolioItemOut(BaseModel):
     current_price_hkd: Optional[float]
     pnl_hkd: Optional[float]
     pnl_pct: Optional[float]
-    trend_30d: Optional[float]
+    trend_1m: Optional[float]
 
     model_config = {"from_attributes": True}
 

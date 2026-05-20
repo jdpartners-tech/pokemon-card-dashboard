@@ -43,7 +43,7 @@ def get_portfolio(db: Session = Depends(get_db)):
             current_price_hkd=current,
             pnl_hkd=round(pnl_hkd, 2) if pnl_hkd is not None else None,
             pnl_pct=round(pnl_pct, 2) if pnl_pct is not None else None,
-            trend_30d=metrics["trend_30d"],
+            trend_1m=metrics["trend_1m"],
         ))
 
     pnl_total = total_current - total_invested

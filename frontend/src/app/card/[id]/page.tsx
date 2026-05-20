@@ -137,10 +137,10 @@ export default function CardPage({ params }: { params: Promise<{ id: string }> }
 
       {/* Trend tiles */}
       <div className="grid grid-cols-4 gap-3">
-        <TrendTile label="7 days" value={card.trend_7d} />
-        <TrendTile label="30 days" value={card.trend_30d} active />
-        <TrendTile label="90 days" value={card.trend_90d} />
-        <TrendTile label="1 year" value={card.trend_1y} />
+        <TrendTile label="1 month" value={card.trend_1m} active />
+        <TrendTile label="3 months" value={card.trend_3m} />
+        <TrendTile label="6 months" value={card.trend_6m} />
+        <TrendTile label="All time" value={card.trend_all} />
       </div>
 
       {/* Price history chart */}

@@ -78,9 +78,9 @@ export default function PortfolioTable({ items, onDelete }: Props) {
                 ) : <span className="text-gray-600">—</span>}
               </td>
               <td className="px-3 py-2 text-right">
-                {item.trend_30d != null ? (
-                  <span className={`text-sm tabular-nums font-medium ${item.trend_30d >= 0 ? "text-green-400" : "text-red-400"}`}>
-                    {item.trend_30d >= 0 ? "▲" : "▼"}{Math.abs(item.trend_30d).toFixed(1)}%
+                {item.trend_1m != null ? (
+                  <span className={`text-sm tabular-nums font-medium ${item.trend_1m >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    {item.trend_1m >= 0 ? "▲" : "▼"}{Math.abs(item.trend_1m).toFixed(1)}%
                   </span>
                 ) : <span className="text-gray-600">—</span>}
               </td>

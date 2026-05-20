@@ -40,10 +40,10 @@ export default function CardTable({ cards, activeSort = "" }: Props) {
   }
 
   const cols = [
-    { key: "trend_7d", label: "7d" },
-    { key: "trend_30d", label: "30d" },
-    { key: "trend_90d", label: "90d" },
-    { key: "trend_1y", label: "1y" },
+    { key: "trend_1m",  label: "1M"  },
+    { key: "trend_3m",  label: "3M"  },
+    { key: "trend_6m",  label: "6M"  },
+    { key: "trend_all", label: "All" },
   ];
 
   return (
