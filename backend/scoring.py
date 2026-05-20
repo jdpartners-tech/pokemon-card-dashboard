@@ -30,6 +30,10 @@ def calculate_trend_vs_days_ago(snapshots, days: int) -> Optional[float]:
     if not old_snaps:
         return None
     old_snap = max(old_snaps, key=lambda s: _aware_dt(s.scraped_at))
+    # Reject baseline if it's more than [days] older than the cutoff — means we have
+    # a data gap larger than the window itself, making the label (7D/30D/etc.) misleading.
+    if (cutoff - _aware_dt(old_snap.scraped_at)).days > days:
+        return None
     old_price = _get_price(old_snap)
     if not old_price or old_price == 0:
         return None
