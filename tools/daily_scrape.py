@@ -36,8 +36,33 @@ os.environ["DATABASE_URL"] = DATABASE_URL
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import OperationalError
+import requests as _requests
+
 from backend.models import Card, PriceSnapshot
 from backend.scrapers.pricecharting import fetch_product_page_data
+
+SNKRDUNK_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    "Accept": "application/json",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://snkrdunk.com/",
+}
+
+
+def fetch_snkrdunk_psa10_usd(snkrdunk_id: str) -> float | None:
+    """Fetch current PSA 10 lowest asking price in USD from SNKRDunk product API."""
+    try:
+        url = f"https://snkrdunk.com/en/v1/trading-cards/{snkrdunk_id}/min-prices-by-conditions"
+        r = _requests.get(url, headers=SNKRDUNK_HEADERS, timeout=15)
+        if r.status_code != 200:
+            return None
+        for cp in r.json().get("conditionPrices", []):
+            if cp.get("conditionName") == "PSA 10":
+                price = cp.get("minPrice")
+                return float(price) if price else None
+    except Exception as e:
+        logger.debug(f"SNKRDunk fetch failed (id={snkrdunk_id}): {e}")
+    return None
 
 logging.basicConfig(
     level=logging.INFO,
@@ -82,7 +107,9 @@ def get_already_done(engine) -> set[str]:
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     with engine.connect() as conn:
         rows = conn.execute(
-            text("SELECT DISTINCT card_id FROM price_snapshots WHERE scraped_at::date = :today AND pricecharting_price_hkd IS NOT NULL"),
+            text("""SELECT DISTINCT card_id FROM price_snapshots
+                    WHERE scraped_at::date = :today
+                    AND (pricecharting_price_hkd IS NOT NULL OR snkrdunk_price_hkd IS NOT NULL)"""),
             {"today": today},
         ).fetchall()
     return {str(r[0]) for r in rows}
@@ -100,24 +127,38 @@ def run():
     Session = sessionmaker(bind=engine)
     db = Session()
 
-    cards = db.query(Card).filter(Card.pricecharting_url.isnot(None)).all()
-    todo = [c for c in cards if str(c.id) not in already_done]
-    logger.info(f"To scrape: {len(todo)} / {len(cards)} cards")
+    all_scrapeable = db.query(Card).filter(
+        (Card.pricecharting_url.isnot(None)) | (Card.snkrdunk_id.isnot(None))
+    ).all()
+    todo = [c for c in all_scrapeable if str(c.id) not in already_done]
+    logger.info(f"To scrape: {len(todo)} / {len(all_scrapeable)} cards")
 
     fixed = failed = 0
     for i, card in enumerate(todo, 1):
-        price_usd, image_url = fetch_product_page_data(card.pricecharting_url)
+        pc_price_usd = None
+        snkr_price_usd = None
+        image_url = None
 
-        if price_usd and price_usd > 0:
+        if card.pricecharting_url:
+            pc_price_usd, image_url = fetch_product_page_data(card.pricecharting_url)
+
+        if card.snkrdunk_id:
+            snkr_price_usd = fetch_snkrdunk_psa10_usd(card.snkrdunk_id)
+            time.sleep(0.3)
+
+        if pc_price_usd or snkr_price_usd:
             snap = PriceSnapshot(
                 card_id=card.id,
-                pricecharting_price_usd=Decimal(str(round(price_usd, 2))),
-                pricecharting_price_hkd=Decimal(str(round(price_usd * fx, 2))),
+                pricecharting_price_usd=Decimal(str(round(pc_price_usd, 2))) if pc_price_usd else None,
+                pricecharting_price_hkd=Decimal(str(round(pc_price_usd * fx, 2))) if pc_price_usd else None,
+                snkrdunk_price_hkd=Decimal(str(round(snkr_price_usd * fx, 2))) if snkr_price_usd else None,
                 usd_to_hkd_rate=Decimal(str(round(fx, 4))),
             )
             db.add(snap)
             fixed += 1
-            logger.info(f"[{i}/{len(todo)}] {card.name}: ${price_usd:.2f} → HK${price_usd * fx:.2f}")
+            pc_str = f"PC=${pc_price_usd:.2f}" if pc_price_usd else "PC=—"
+            snkr_str = f"SNKR=${snkr_price_usd:.2f}" if snkr_price_usd else ""
+            logger.info(f"[{i}/{len(todo)}] {card.name}: {pc_str} {snkr_str} → HK${(pc_price_usd or snkr_price_usd or 0) * fx:.2f}")
         else:
             failed += 1
             logger.warning(f"[{i}/{len(todo)}] {card.name}: no price")
@@ -152,7 +193,7 @@ def run():
             time.sleep(2)
 
     db.close()
-    logger.info(f"=== Done — {fixed} new prices, {failed} failed ===")
+    logger.info(f"=== Done — {fixed} snapshots written, {failed} failed ===")
 
 
 if __name__ == "__main__":
