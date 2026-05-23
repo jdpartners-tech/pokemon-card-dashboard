@@ -163,7 +163,7 @@ def run():
             failed += 1
             logger.warning(f"[{i}/{len(todo)}] {card.name}: no price")
 
-        if image_url and not card.image_url:
+        if image_url:
             card.image_url = image_url
 
         if i % 25 == 0:

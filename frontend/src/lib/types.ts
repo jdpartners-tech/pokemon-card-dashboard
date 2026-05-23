@@ -46,6 +46,8 @@ export interface PortfolioItem {
   purchase_price_hkd: number;
   purchased_at: string;
   current_price_hkd: number | null;
+  snkrdunk_price_hkd: number | null;
+  pricecharting_price_hkd: number | null;
   pnl_hkd: number | null;
   pnl_pct: number | null;
   trend_1m: number | null;

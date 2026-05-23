@@ -20,8 +20,9 @@ def get_portfolio(db: Session = Depends(get_db)):
 
     for item in items:
         card = item.card
-        current = _latest_price(card.snapshots, "pricecharting_price_hkd") or \
-                  _latest_price(card.snapshots, "snkrdunk_price_hkd")
+        snkr_price = _latest_price(card.snapshots, "snkrdunk_price_hkd")
+        pc_price = _latest_price(card.snapshots, "pricecharting_price_hkd")
+        current = snkr_price or pc_price
         paid = float(item.purchase_price_hkd)
         pnl_hkd = (current - paid) if current else None
         pnl_pct = ((current - paid) / paid * 100) if current and paid else None
@@ -41,6 +42,8 @@ def get_portfolio(db: Session = Depends(get_db)):
             purchase_price_hkd=paid,
             purchased_at=item.purchased_at,
             current_price_hkd=current,
+            snkrdunk_price_hkd=snkr_price,
+            pricecharting_price_hkd=pc_price,
             pnl_hkd=round(pnl_hkd, 2) if pnl_hkd is not None else None,
             pnl_pct=round(pnl_pct, 2) if pnl_pct is not None else None,
             trend_1m=metrics["trend_1m"],

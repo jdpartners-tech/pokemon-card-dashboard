@@ -60,6 +60,8 @@ class PortfolioItemOut(BaseModel):
     purchase_price_hkd: float
     purchased_at: date
     current_price_hkd: Optional[float]
+    snkrdunk_price_hkd: Optional[float]
+    pricecharting_price_hkd: Optional[float]
     pnl_hkd: Optional[float]
     pnl_pct: Optional[float]
     trend_1m: Optional[float]

@@ -5,6 +5,12 @@ import { useState, useRef, useEffect } from "react";
 import useSWR from "swr";
 import { cardsUrl, fetchCards, type CardFilters } from "@/lib/api";
 import CardTable from "@/components/CardTable";
+import type { PriceSource } from "@/app/my-cards/page";
+
+const POKEMON_CHIPS = [
+  "Pikachu", "Charizard", "Blastoise", "Mewtwo", "Gengar",
+  "Eevee", "Mew", "Lugia", "Rayquaza", "Umbreon",
+];
 
 const SORT_OPTIONS: { value: NonNullable<CardFilters["sort"]>; label: string }[] = [
   { value: "trend_1m",  label: "Trend: 1M"   },
@@ -74,6 +80,7 @@ function SortDropdown({
 
 export default function HomePage() {
   const [filters, setFilters] = useState<CardFilters>({ sort: "trend_1m" });
+  const [priceSource, setPriceSource] = useState<PriceSource>("snkrdunk");
   const url = cardsUrl(filters);
   const { data, error, isLoading } = useSWR(url, fetchCards, { refreshInterval: 60_000 });
 
@@ -85,10 +92,30 @@ export default function HomePage() {
         <div>
           <h1 className="text-xl font-bold text-gray-100">Top Trending PSA 10 Cards</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            {data ? `${data.length} cards` : "Loading…"} · sorted by {currentSortLabel}
+            {data ? `${data.length} cards` : "Loading…"}
+            {filters.search ? ` matching "${filters.search}"` : ""}
+            {" "}· sorted by {currentSortLabel}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
+          {/* Price source toggle */}
+          <div className="flex items-center rounded-lg border border-white/10 overflow-hidden text-xs"
+               style={{ background: "rgba(15, 23, 42, 0.75)" }}>
+            <span className="px-3 py-1.5 text-gray-500 border-r border-white/10 select-none">Price</span>
+            {(["snkrdunk", "pricecharting"] as PriceSource[]).map((src) => (
+              <button
+                key={src}
+                onClick={() => setPriceSource(src)}
+                className={`px-3 py-1.5 font-medium transition-colors ${
+                  priceSource === src
+                    ? "bg-blue-600 text-white"
+                    : "text-gray-400 hover:text-gray-200"
+                }`}
+              >
+                {src === "snkrdunk" ? "SNKRDunk" : "PriceCharting"}
+              </button>
+            ))}
+          </div>
           <SortDropdown
             value={filters.sort ?? "trend_1m"}
             onChange={(sort) => setFilters(f => ({ ...f, sort }))}
@@ -105,6 +132,33 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Pokémon quick-filter chips */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setFilters(f => ({ ...f, search: undefined }))}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+            !filters.search
+              ? "bg-blue-600 text-white border-blue-600"
+              : "bg-white/5 text-gray-400 border-white/10 hover:border-white/30 hover:text-gray-200"
+          }`}
+        >
+          All
+        </button>
+        {POKEMON_CHIPS.map(name => (
+          <button
+            key={name}
+            onClick={() => setFilters(f => ({ ...f, search: f.search === name ? undefined : name }))}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors border ${
+              filters.search === name
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-white/5 text-gray-400 border-white/10 hover:border-white/30 hover:text-gray-200"
+            }`}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+
       {error && (
         <div className="rounded-lg bg-red-950/60 border border-red-800/60 px-4 py-3 text-sm text-red-300 backdrop-blur">
           Failed to load cards — is the backend running?
@@ -113,7 +167,7 @@ export default function HomePage() {
       {isLoading && (
         <div className="text-center py-16 text-gray-500 animate-pulse">Loading cards…</div>
       )}
-      {data && <CardTable cards={data} activeSort={filters.sort ?? "trend_1m"} />}
+      {data && <CardTable cards={data} activeSort={filters.sort ?? "trend_1m"} priceSource={priceSource} />}
     </div>
   );
 }

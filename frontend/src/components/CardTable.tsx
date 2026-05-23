@@ -4,10 +4,12 @@
 import { useRouter } from "next/navigation";
 import type { CardSummary } from "@/lib/types";
 import WatchlistButton from "./WatchlistButton";
+import type { PriceSource } from "@/app/my-cards/page";
 
 interface Props {
   cards: CardSummary[];
   activeSort?: string;
+  priceSource?: PriceSource;
 }
 
 const hkd = (v: number | null) =>
@@ -28,7 +30,7 @@ function AthCell({ value }: { value: number | null }) {
   return <span className={`tabular-nums text-sm font-medium ${color}`}>{value.toFixed(1)}%</span>;
 }
 
-export default function CardTable({ cards, activeSort = "" }: Props) {
+export default function CardTable({ cards, activeSort = "", priceSource = "snkrdunk" }: Props) {
   const router = useRouter();
 
   if (cards.length === 0) {
@@ -56,7 +58,12 @@ export default function CardTable({ cards, activeSort = "" }: Props) {
             <th className="px-3 py-2 w-8" />
             <th className="px-3 py-2 w-[72px]" />
             <th className="px-3 py-2 text-left text-xs font-medium text-gray-400 uppercase tracking-wide">Card</th>
-            <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wide whitespace-nowrap">Price (HKD)</th>
+            <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wide whitespace-nowrap">
+              Price (HKD)
+              <span className="ml-1 text-[10px] font-normal text-gray-600 normal-case">
+                ({priceSource === "snkrdunk" ? "SNKRDunk" : "PC"})
+              </span>
+            </th>
             <th className="px-3 py-2 text-right text-xs font-medium text-gray-400 uppercase tracking-wide">vs ATH</th>
             {cols.map(({ key, label }) => (
               <th key={key}
@@ -109,10 +116,11 @@ export default function CardTable({ cards, activeSort = "" }: Props) {
                 </div>
               </td>
               <td className="px-3 py-2 text-right tabular-nums text-gray-200 whitespace-nowrap">
-                {hkd(card.pricecharting_price_hkd ?? card.snkrdunk_price_hkd)}
-                <div className="text-[10px] text-gray-600">
-                  {card.pricecharting_price_hkd ? "PriceCharting" : card.snkrdunk_price_hkd ? "Snkrdunk" : ""}
-                </div>
+                {hkd(
+                  priceSource === "snkrdunk"
+                    ? (card.snkrdunk_price_hkd ?? card.pricecharting_price_hkd)
+                    : (card.pricecharting_price_hkd ?? card.snkrdunk_price_hkd)
+                )}
               </td>
               <td className="px-3 py-2 text-right"><AthCell value={card.pct_from_ath} /></td>
               {cols.map(({ key }) => (
