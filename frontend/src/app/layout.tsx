@@ -10,6 +10,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <html lang="en">
+      <head>
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="PokéInvest" />
+        <meta name="theme-color" content="#0f172a" />
+      </head>
       <body className="min-h-screen text-gray-100" style={{ backgroundColor: "#06090e" }}>
         <div
           className="fixed inset-0 -z-10"
